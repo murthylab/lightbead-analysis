@@ -12,12 +12,14 @@ import matplotlib.pyplot as plt
 import pickle
 import matplotlib
 
+#%%
 matplotlib.rcParams['axes.spines.right'] = False
 matplotlib.rcParams['axes.spines.top'] = False
 
 dic = ['GCaMP6f_06212024_a1_r2.pkl'] # sine pulse
     
-path_dico = 'D:/Wayan/LightBead/method paper/dico data/'
+path_dico = "C:/Users/alber\Dropbox/AL_WG Lightbead Data/Method paper/Dictionary data/Rig E/"
+#'D:/Wayan/LightBead/method paper/dico data/'
 
 
 scope = '2p'
@@ -41,7 +43,8 @@ if scope == '2p':
     time_audio = data['time_audio']
     time_activity = data['time_activity']
     n_volumes = data['n_volumes']
- 
+
+#%% Traces
  
 dffs_detrend = data['dffs_corrected']
 sine_song = data['sine_song']
@@ -70,8 +73,6 @@ plt.fill_between(time_audio,y1=max_trace*sine_song,y2=(max_trace*sine_song)+0.02
 plt.title('Mean activity {}'.format(dic))
 
 
-
-
 ################################################################################
 ##### Plot mean activity after background correction
 ################################################################################
@@ -87,4 +88,17 @@ plt.fill_between(time_audio,y1=max_trace*pulse_song,y2=(max_trace*pulse_song)+0.
 plt.fill_between(time_audio,y1=max_trace*sine_song,y2=(max_trace*sine_song)+0.004,where =sine_song>0,color='b',alpha=0.5)
 plt.title('Mean activity after background correction {}'.format(dic))
 
+#%% print lists
+# to do: save to different directory
 
+with open(f'{dic[0][:-4]}_audiocorr_before.txt', 'w') as file:
+        for num in audio_correlated_before:
+            file.write(str(num) +'\n')
+file.close()
+
+with open(f'{dic[0][:-4]}_audiocorr_after.txt', 'w') as file:
+        for num in audio_correlated_after:
+            file.write(str(num) +'\n')
+file.close()
+
+#generate ROI plots in ROI_plotter.ipynb
