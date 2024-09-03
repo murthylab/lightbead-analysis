@@ -425,6 +425,7 @@ def sorted_heatmap_audio(dffs, audio_correlated,title,vmin,vmax, cmap):
     """    
    #### Plot heatmaps of the audio correlated ROIs
     pca = PCA()
+    ROIS = pca.fit_transform(dffs[audio_correlated,:].T)
     weights = pca.components_
     sorter = np.argsort(weights[0])[::1]
 
@@ -443,8 +444,6 @@ def sorted_heatmap_audio(dffs, audio_correlated,title,vmin,vmax, cmap):
     return(sort)    
     
     
-    
-
 #########################################################################################
 ## Clustering
 #########################################################################################
