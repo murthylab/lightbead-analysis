@@ -49,7 +49,8 @@ if scope == '2p':
     list_dic = ['GCaMP6f_06212024_a1_r2.pkl', 'GCaMP6f_06212024_a1_r8.pkl','GCaMP6f_06212024_a1_r1.pkl', 'GCaMP6f_06212024_a1_r4.pkl']#'GCaMP6f_06212024_a1_r2.pkl','GCaMP6f_06212024_a1_r8.pkl','GCaMP6f_06212024_a1_r1.pkl'
     #list_dic = ['GCaMP6f_06212024_a1_r5.pkl', 'GCaMP6f_06212024_a1_r7.pkl'] # sine pulse
     
-path_dico = 'D:/Wayan/LightBead/method paper/dico data/'
+path_dico = "C:/Users/alber\Dropbox/AL_WG Lightbead Data/Method paper/Dictionary data/Rig E/"
+#'D:/Wayan/LightBead/method paper/dico data/'
 
 
 ## The following makes sure all runs have the same dimension
@@ -80,7 +81,7 @@ if stim_type == 'Pulse':
     #start_block_seconds = np.array([5,25,45,65,84,103,123,143,163,183,203,223,243])
     #end_block_seconds = np.array([15,35,55,75,94,113,133,153,173,193,213,233,253])
     
-    start_bloc_seconds = np.array([5,25,45,65,84,103,123,143,163,183,202.99894,222.99788,242.99788])
+    start_block_seconds = np.array([5,25,45,65,84,103,123,143,163,183,202.99894,222.99788,242.99788])
     end_block_seconds = np.array([15,35,55,75,94,113,133,153,173,192.99894,212.99788,232.99788,252.99788])
     
 
@@ -147,8 +148,8 @@ for i, dic in enumerate(list_dic):
         
    # dffs_z = f._zscore(data['dffs_align'])[:,:min_dim]
     #time_activity = data['time_activity']#[:min_dim]
-    pulse_song = data['pulse_song'][0]
-    sine_song = data['sine_song'][0]
+    pulse_song = data['pulse_song']#[0]
+    sine_song = data['sine_song']#[0]
     t_start_audio = data['time_start_audio']
     t_i2c = data['t_i2c']
     time_activity= np.arange(frame_rate,(dffs.shape[1]+frame_rate)*frame_rate,frame_rate)  
