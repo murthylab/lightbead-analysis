@@ -120,7 +120,7 @@ def background_correction(roi, tolerance=1e-6, lam=100, niter=10):
 #########################################################################################
 ## Extracting auditory ROIs
 #########################################################################################
-def filter_threshold(dffs, threshold, stim, pulse_song, sine_song, time_audio, time_activity):
+def filter_threshold(dffs, threshold, stim, pulse_song, sine_song, time_audio, time_activity, Hz):
     """
     Description
     ----------
@@ -160,16 +160,22 @@ def filter_threshold(dffs, threshold, stim, pulse_song, sine_song, time_audio, t
     tot_stim = pulse_song + sine_song
     #Checks when any song is presented and extracts the corresponding time in seconds
     time_stim = np.unique(np.int_(time_audio[np.where(tot_stim>0)]))
+    #truncate time_stim if longer than recording
+    time_stim = time_stim[np.where(time_stim < dffs.shape[1]/Hz)]
     # now we check when the time vector in activity equals these values and get the indexes
     index_activity_tot = time_activity.searchsorted(time_stim)    
+    
+        
+    # eliminate values for which activity went on after microscope acquisition
+    index_activity_tot = index_activity_tot[np.where(index_activity_tot != dffs.shape[1])]
     
     # get the index in dffs activity when no audio is present
     index_no_audio = []
     for index,t in enumerate(np.int_(time_activity)):
         if t not in time_stim:
             index_no_audio.append(index)
-    
-    index_no_audio = np.array(index_no_audio)   
+            
+    index_no_audio = np.array(index_no_audio)
     
     mean_stim = dffs[:,index_activity_tot].mean(axis = 1) 
     mean_no_stim = dffs[:,index_no_audio].mean(axis = 1)
