@@ -167,7 +167,7 @@ def filter_threshold(dffs, threshold, stim, pulse_song, sine_song, time_audio, t
     
         
     # eliminate values for which activity went on after microscope acquisition
-    #index_activity_tot = index_activity_tot[np.where(index_activity_tot != dffs.shape[1])]
+    index_activity_tot = index_activity_tot[np.where(index_activity_tot != dffs.shape[1])]
     
     # get the index in dffs activity when no audio is present
     index_no_audio = []
