@@ -35,8 +35,8 @@ def getdff(gcamp_path: str, outdir: str, fname: str, shape: Tuple[int, int, int,
     brain = np.memmap(gcamp_path, dtype='float32', mode='r+', shape=shape)
 
     # initialize the df/f and z(df/f) memmaps (flush these later)
-    # dff_path = os.path.join(outdir, fname)
-    # brain_dff = np.memmap(dff_path, dtype='float32', mode='w+', shape=shape)
+    dff_path = os.path.join(outdir, fname)
+    brain_dff = np.memmap(dff_path, dtype='float32', mode='w+', shape=shape)
 
     z_dff_path = os.path.join(outdir, f'zscore_{fname}')
     z_brain_dff = np.memmap(z_dff_path, dtype='float32', mode='w+', shape=shape)
@@ -50,12 +50,12 @@ def getdff(gcamp_path: str, outdir: str, fname: str, shape: Tuple[int, int, int,
         hpf = _high_pass_filter(thisSlice[:, :, None, :])  # needs 4D input
 
         dff = _dff(hpf)
-        # brain_dff[:, :, ii, :] = dff[:, :, 0, :]
+        brain_dff[:, :, ii, :] = dff[:, :, 0, :]
 
         zscored_dff = zscore_4D(dff)
         z_brain_dff[:, :, ii, :] = zscored_dff[:, :, 0, :]
 
-    # brain_dff.flush()
+    brain_dff.flush()
     z_brain_dff.flush()
 
 # --------*--------*--------*--------
