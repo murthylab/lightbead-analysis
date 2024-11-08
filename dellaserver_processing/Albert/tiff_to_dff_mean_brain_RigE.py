@@ -42,7 +42,7 @@ def main():
 
     parser.add_argument('--flytrial', dest='flytrial', type=str, help="name of flytrial")
 
-    parser.add_argument('--projstim', dest='projsub', type=bool, help="visual stim line subtraction")
+    parser.add_argument('--projstim', dest='projsub', type=int, help="visual stim line subtraction")
     parser.add_argument('--spatialthresh', dest='S_THRESH', type=int)
     parser.add_argument('--temporalthresh', dest='T_THRESH', type=int)
 
@@ -71,10 +71,13 @@ def main():
         doGetVols = True
         doMakeMean = True
         doMoCo = True
-        doProjSub = args.projsub
         doConcatMoCo = True
         doGetDFF = True
         doPlot = True
+        if args.projsub==1:
+            doProjSub = True
+        else:
+            doProjSub = False
 
     # --------*--------*--------*--------
     # hyper params
