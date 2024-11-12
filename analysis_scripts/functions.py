@@ -120,6 +120,79 @@ def background_correction(roi, tolerance=1e-6, lam=100, niter=10):
 #########################################################################################
 ## Extracting auditory ROIs
 #########################################################################################
+def filter_threshold_gen(dffs, threshold, stim, stim_starts, stim_stops, time_activity, Hz):
+    """
+    Description: general
+    ----------
+    This function takes the mean of the activity when stimulus is ON and if this mean is higher than the mean of the 
+    activity when the stimulus is OFF times a chosen threshold, it extracts it as audio correlated.
+    ----------
+
+    Parameters
+    ----------
+    dffs (np.ndarray)
+        Array containing the ROIs, each row is an roi.
+    threshold (int)
+        Threshold multiplier: fraction of high average (ceiling to floor) to be used when computing the metric and extracting ROIs
+    stim (str)
+        either 'ON' of 'OFF' to specifiy if we want to extract ROIs correlated with stimulus or with silence    
+    stim_starts (np.ndarray)
+        array containing time points at which stim starts
+    stim_stops (np.ndarray)
+        array containing time points at which stim stops
+    time_activity (np.ndarray)
+        array containing the time of the activity   
+    ----------
+
+    Returns
+    ----------
+    audio_correlated_on or audio_correlated_off (ndarray)
+        array containing the index in dffs of the roi that are correlated with the auditory stimulus
+        
+    mean_activity (float)
+        mean activity when the stimulus was ON or OFF depending on stim
+    ----------   
+    
+    """
+    # now we check when the time vector in activity equals these values and get the indexes
+    index_activity_tot = []
+    for i in range(len(stim_starts)):
+        index_temp = []
+        index_temp = np.where(np.logical_and(time_activity >= stim_starts[i], time_activity <= stim_stops[i]))[0]
+        index_activity_tot.extend(index_temp.tolist())
+
+
+    # eliminate values for which activity went on after microscope acquisition
+    #index_activity_tot = index_activity_tot[np.where(index_activity_tot != dffs.shape[1])]
+    
+    # get the index in dffs activity when no audio is present
+    index_no_audio = []
+    for index,t in enumerate(np.int_(time_activity)):
+        if index not in index_activity_tot:
+            index_no_audio.append(index)
+            
+    index_no_audio = np.array(index_no_audio)
+    
+    mean_stim = dffs[:,index_activity_tot].mean(axis = 1) 
+    mean_no_stim = dffs[:,index_no_audio].mean(axis = 1)
+    
+    if stim == 'ON':
+        audio_correlated_on = np.where( (mean_no_stim<(mean_stim/threshold)) &  (np.amax(dffs,axis = 1)<2)  &  (dffs[:,index_no_audio].mean(axis=1)>0) )[0].tolist()
+        mean_activity = mean_stim[audio_correlated_on].tolist()
+        print('number of audio correlated ROIs: {}'.format(len(audio_correlated_on)))
+        return (audio_correlated_on,mean_activity)
+    
+    if stim == 'OFF':
+        audio_correlated_off = np.where( (mean_stim<(mean_no_stim/threshold)) &  (np.amax(dffs,axis = 1)<2)  &  (dffs[:,index_no_audio].mean(axis=1)>0) )[0].tolist()
+        mean_activity = mean_stim[audio_correlated_off].tolist()
+        print('number of audio correlated ROIs offset: {}'.format(len(audio_correlated_off))) 
+        return  (audio_correlated_off,mean_activity)
+       
+    else:
+        raise Exception('wrong input')
+
+
+
 def filter_threshold(dffs, threshold, stim, pulse_song, sine_song, time_audio, time_activity, Hz):
     """
     Description
