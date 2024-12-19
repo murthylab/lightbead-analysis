@@ -50,6 +50,7 @@ def main():
     parser.add_argument('--ydim', dest='YDIM', type=int)
     parser.add_argument('--zdim', dest='ZDIM', type=int)
     parser.add_argument('--flybacknum', dest='FLYBACKNUM', type=int)
+    parser.add_argument('--firstchannel', dest='FIRST_CHANNEL', type=int)
     parser.add_argument('--mocochannel', dest='MOCO_CHANNEL', type=int)
     parser.add_argument('--numvols', dest='NUMVOLS', type=int)
 
@@ -89,6 +90,7 @@ def main():
     NUMVOLS = args.NUMVOLS
     FLYBACKNUM = args.FLYBACKNUM
     MOCO_CHANNEL = args.MOCO_CHANNEL; # 0 for green, 1 for red
+    FIRST_CHANNEL = args.FIRST_CHANNEL; # 0 if channel order is GR, 1 if channel order is RG
 
     shape = (XDIM, YDIM, ZDIM, NUMVOLS)
     trimmed_shape = shape = (XDIM, YDIM, ZDIM-FLYBACKNUM, NUMVOLS)
@@ -124,7 +126,7 @@ def main():
 
     # extract individual green and red volumes from tiffs
     if doGetVols and not doProjSub: 
-        vols_RigE.get_from_tiffs(args.tiffdir,args.outdir,zdim=ZDIM, flybacknum=FLYBACKNUM)
+        vols_RigE.get_from_tiffs(args.tiffdir,args.outdir,zdim=ZDIM, flybacknum=FLYBACKNUM, firstchannel=FIRST_CHANNEL)
 
     # save mean-tdtomato volume. Use later for moco and aligning to atlas
     if doMakeMean and not doProjSub:
@@ -139,7 +141,7 @@ def main():
 
         LOG.info("Projector Subtraction mode on")
         # trim out flyback
-        vols_RigE.get_from_tiffs_proj(args.tiffdir,args.outdir,zdim=ZDIM, flybacknum=FLYBACKNUM)
+        vols_RigE.get_from_tiffs_proj(args.tiffdir,args.outdir,zdim=ZDIM, flybacknum=FLYBACKNUM, firstchannel=FIRST_CHANNEL)
         #make raw mmaps
         vols_RigE.concat_volumes(green_raw_dir, raw_greenpath, xdim=XDIM, ydim=YDIM, zdim=ZDIM-FLYBACKNUM)
         vols_RigE.concat_volumes(red_raw_dir, raw_redpath, xdim=XDIM, ydim=YDIM, zdim=ZDIM-FLYBACKNUM)

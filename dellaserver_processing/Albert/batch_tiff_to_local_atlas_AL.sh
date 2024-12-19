@@ -16,9 +16,10 @@ TIFFDIR="/scratch/gpfs/albertl/rigE_data/082824_anat1/raw"
 OUTDIR="/scratch/gpfs/albertl/rigE_data/082824_anat1"
 FLYNAME="082824_anat1"
 DONEMOCO=1  # 0=False, 1=True (switch this depending on whether moco has been run already or not)
+FIRST_CHANNEL=1 # flag 0 if channel order is GR, 1 if channel order is RG
 X=1024
 Y=512
 Z=149 
 N=50
 
-srun python3 tiff_to_local_atlas.py --tiffdir $TIFFDIR --outdir $OUTDIR --flyname $FLYNAME --doneMoco $DONEMOCO --shape $X $Y $Z $N
+srun python3 tiff_to_local_atlas.py --tiffdir $TIFFDIR --outdir $OUTDIR --flyname $FLYNAME --doneMoco $DONEMOCO --firstchannel $FIRST_CHANNEL --shape $X $Y $Z $N

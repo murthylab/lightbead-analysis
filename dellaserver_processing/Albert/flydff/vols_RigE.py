@@ -30,7 +30,7 @@ from brainviz import io  # noqa: E402
 # --------*--------*--------*--------
 
 
-def get_from_tiffs(tiffdir, outdir, zdim, flybacknum):
+def get_from_tiffs(tiffdir, outdir, zdim, flybacknum, firstchannel):
     """save green and red volumes from tiffs"""
 
     _check_dirs(tiffdir, outdir)
@@ -38,9 +38,12 @@ def get_from_tiffs(tiffdir, outdir, zdim, flybacknum):
 
     list_of_tiffs = _list_tiffs(tiffdir)
     logging.info(f'list of tiffs: {list_of_tiffs}')
-    _extract_volumes_from_tiffs(list_of_tiffs, zdim, flybacknum, green_dir, red_dir)
+    if firstchannel==0:
+        _extract_volumes_from_tiffs(list_of_tiffs, zdim, flybacknum, green_dir, red_dir)
+    elif firstchannel==1:
+        _extract_volumes_from_tiffs_RG(list_of_tiffs, zdim, flybacknum, green_dir, red_dir)
 
-def get_from_tiffs_proj(tiffdir, outdir, zdim, flybacknum):
+def get_from_tiffs_proj(tiffdir, outdir, zdim, flybacknum, firstchannel):
     """save green and red volumes from tiffs"""
 
     _check_dirs(tiffdir, outdir)
@@ -48,7 +51,10 @@ def get_from_tiffs_proj(tiffdir, outdir, zdim, flybacknum):
 
     list_of_tiffs = _list_tiffs(tiffdir)
     logging.info(f'list of tiffs: {list_of_tiffs}')
-    _extract_volumes_from_tiffs(list_of_tiffs, zdim, flybacknum, green_dir, red_dir)
+    if firstchannel==0:
+        _extract_volumes_from_tiffs(list_of_tiffs, zdim, flybacknum, green_dir, red_dir)
+    elif firstchannel==1:
+        _extract_volumes_from_tiffs_RG(list_of_tiffs, zdim, flybacknum, green_dir, red_dir)
 
 
 def concat_volumes(indir, outpath, xdim:int, ydim:int, zdim:int):
@@ -338,3 +344,58 @@ def _extract_volumes_from_tiffs(list_of_tiffs, zdim: int, flybacknum:int, green_
             # next page to process in queue
             THISPAGE += 1
 
+def _extract_volumes_from_tiffs_RG(list_of_tiffs, zdim: int, flybacknum:int, green_dir: str, red_dir: str):
+    """get single volumes from tiffs and store in correct green and red dir"""
+
+    NUMZFRAMES = zdim
+    FLYBACKFRAME = zdim - flybacknum 
+    COLOR = ['red','green']
+
+    logging.info("extracting volumes from tiff files: red first green second")
+    THISPAGE = 0  # page to process in queue, range [0, last_page_of_experiment]
+    STARTPAGE = 0  # start at 1st channel (gcamp)
+    for TIFFIDX, tiff in enumerate(list_of_tiffs):
+        tiff_array = io.load(tiff)
+
+        if TIFFIDX == 0:  # initialize the first volumes
+            green_volume = _initialize_fly_volume(tiff_array, FLYBACKFRAME)
+            red_volume = _initialize_fly_volume(tiff_array, FLYBACKFRAME)
+            logging.info("initializing the first volume")
+
+        NUMPAGES = tiff_array.shape[2]
+
+        logging.info(f"tiff loaded ---> x: {tiff_array.shape[0]}, y: {tiff_array.shape[1]}, pages: {NUMPAGES}")
+
+        # go thru each page in tiff
+        for iPage in np.arange(STARTPAGE, NUMPAGES, 1):
+            logging.info(f"decoding page # {THISPAGE}")
+            ch, frame, vol = io.decode_tiff_page(THISPAGE, NUMZFRAMES)
+            logging.info(f"decoded info ---> ch: {ch}, frame: {frame}, vol: {vol}")
+
+            if ch == 0:  # ch=0 is red, and ch=1 is green
+                if frame < FLYBACKFRAME:
+                    # append frame to current volume
+                    red_volume[:, :, frame] = tiff_array[:, :, iPage]
+                elif frame == FLYBACKFRAME:
+                    # save current volume
+                    logging.info(f"saving volume {vol} to file")
+                    fpath = f"{COLOR[ch]}_volume_{vol}.nii"
+                    io.save(os.path.join(red_dir, fpath), red_volume)
+
+                    # re-initialize the volume
+                    red_volume = _initialize_fly_volume(tiff_array, FLYBACKFRAME)
+            else:  # second channel
+                if frame < FLYBACKFRAME:
+                    # append frame to current volume
+                    green_volume[:, :, frame] = tiff_array[:, :, iPage]
+                elif frame == FLYBACKFRAME:
+                    # save current volume
+                    logging.info(f"saving volume {vol} to file")
+                    fpath = f"{COLOR[ch]}_volume_{vol}.nii"
+                    io.save(os.path.join(green_dir, fpath), green_volume)
+
+                    # re-initialize the volume
+                    green_volume = _initialize_fly_volume(tiff_array, FLYBACKFRAME)
+
+            # next page to process in queue
+            THISPAGE += 1

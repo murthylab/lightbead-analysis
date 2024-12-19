@@ -120,7 +120,7 @@ def background_correction(roi, tolerance=1e-6, lam=100, niter=10):
 #########################################################################################
 ## Extracting auditory ROIs
 #########################################################################################
-def filter_threshold_gen(dffs, threshold, stim, stim_starts, stim_stops, time_activity, Hz):
+def filter_threshold_gen(dffs, threshold, stim, stim_starts, stim_stops, time_activity, Hz, start_cutoff):
     """
     Description: general
     ----------
@@ -142,6 +142,8 @@ def filter_threshold_gen(dffs, threshold, stim, stim_starts, stim_stops, time_ac
         array containing time points at which stim stops
     time_activity (np.ndarray)
         array containing the time of the activity   
+    start cutoff (in frames)
+        number of starting frames to exclude from the analysis (to avoid starting peak)
     ----------
 
     Returns
@@ -168,7 +170,7 @@ def filter_threshold_gen(dffs, threshold, stim, stim_starts, stim_stops, time_ac
     # get the index in dffs activity when no audio is present
     index_no_audio = []
     for index,t in enumerate(np.int_(time_activity)):
-        if index not in index_activity_tot:
+        if index not in index_activity_tot and index >= start_cutoff:
             index_no_audio.append(index)
             
     index_no_audio = np.array(index_no_audio)
