@@ -406,10 +406,11 @@ def create_stim(dffs, start_block_seconds,end_block_seconds ,frame_rate, t_i2c=0
         time_stim_aligned.append(0)
     
     for ii in range(dffs.shape[1]-int((t_i2c)*frame_rate)):
-        if  (s[0]<ii<e[0]) or (s[1]<ii<e[1]) or (s[2]<ii<e[2]) or (s[3]<ii<e[3]) or (s[4]<ii<e[4]) or (s[5]<ii<e[5]) or (s[6]<ii<e[6]) or (s[7]<ii<e[7]) or (s[8]<ii<e[8]) or (s[9]<ii<e[9]) or (s[10]<ii<e[10]) or (s[11]<ii<e[11]) or (s[12]<ii<e[12]):
-            time_stim_aligned.append(0.15)
-        else:
-            time_stim_aligned.append(0)
+        for j in range(0,len(s)):
+            if (s[j]<ii<e[j]): #(s[0]<ii<e[0]) or (s[1]<ii<e[1]) or (s[2]<ii<e[2]) or (s[3]<ii<e[3]) or (s[4]<ii<e[4]) or (s[5]<ii<e[5]) or (s[6]<ii<e[6]) or (s[7]<ii<e[7]) or (s[8]<ii<e[8]) or (s[9]<ii<e[9]) or (s[10]<ii<e[10]) or (s[11]<ii<e[11]) or (s[12]<ii<e[12]):
+               time_stim_aligned.append(0.15)
+            else:
+               time_stim_aligned.append(0)
             
     return (time_stim_aligned)      
                 
