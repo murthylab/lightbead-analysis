@@ -9,12 +9,12 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import functions as f
+import Functions as f
 import pickle
 from _aux import loadmat_h5
 import os
 from scipy.signal import convolve
-
+from scipy.stats import zscore
 
 matplotlib.rcParams['axes.spines.right'] = False
 matplotlib.rcParams['axes.spines.top'] = False
@@ -33,7 +33,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 #############################################################################
 
 #TODO sepcify the scope, 'LB' or '2p'
-scope = '2p'
+scope = 'LB'
 
 #TODO sepcify if data will be exported or not
 export = False
@@ -45,6 +45,11 @@ if scope == 'LB':
     Hz, Hz_target = 28.2893, 28.2893  
     frame_rate = 1/Hz
     name_export = 'dffs_audio_LB_corr_top05_all'
+    
+    depth_a1 =np.arange(275, 5,-10)
+    depth_a2 =np.arange(220,-50,-10)
+    depth_a3 =np.arange(275, 5,-10)
+    list_depth = [depth_a1,depth_a1,depth_a2,depth_a3,depth_a3,depth_a3]
     
     #TODO CHANGE THIS TO THE DESIRED FOLDER containng the pkl files containing the aligned data and the labels
     path_dico = 'D:/Wayan/LightBead/method paper/dico data/zscored/supervoxels_2000/'
@@ -71,7 +76,7 @@ end_block_seconds = np.array([15,35,55,75,94,113,133,153,173,192.99894,212.99788
     
 
 # threshold to extract auditory correlated ROIs    
-cutoff_corr = 0.2
+cutoff_corr = 0.5
 
 
 #%% Merge dffs
@@ -85,12 +90,14 @@ for i, dic in enumerate(list_dic):
     print('Run:', dic)
     
     if scope == 'LB':
-        dffs = data['dffs_aligned'][1:,:min_dim]
+        dffs = data['dffs_aligned'][:,:min_dim]
         time_audio = data['time_audio_aligned']
         pulse_song = data['pulse_song']
         labels = loadmat_h5(os.path.join(path_labels, fname[i]))
         l = labels['labels']
         l = l.reshape((226,512,27))
+        
+        depth_rois = assign_depths(dffs.shape[0], list_depth[i])
 
     if scope == '2p':
         dffs = data['dffs_corrected'][:,:min_dim]
@@ -103,9 +110,50 @@ for i, dic in enumerate(list_dic):
 
     if i == 0:
         dffs_all = dffs
+        depth_rois_all = depth_rois
     else:    
         dffs_all = np.vstack((dffs_all,dffs))
+        depth_rois_all = np.hstack((depth_rois_all,depth_rois))
         
+
+        
+#%%  Extract depth
+
+def assign_depths(n_rois: int, slice_depths: np.ndarray) -> np.ndarray:
+    """
+    Assigns depths to each ROI given the total number of ROIs and slice depths.
+
+    Parameters
+    ----------
+    n_rois : int
+        Total number of ROIs (number of rows in your 2D array).
+    slice_depths : np.ndarray
+        1D array of shape (n_slices,) containing the depth for each slice.
+
+    Returns
+    -------
+    roi_depths : np.ndarray
+        1D array of shape (n_rois,) where each entry is the depth of the slice
+        corresponding to that ROI.
+    """
+    n_slices = len(slice_depths)
+    rois_per_slice = n_rois // n_slices  # assumes equal number of ROIs per slice
+    
+    if n_rois % n_slices != 0:
+        raise ValueError("Number of ROIs is not evenly divisible by number of slices.")
+
+    # Repeat each slice depth rois_per_slice times
+    roi_depths = np.repeat(slice_depths, rois_per_slice)
+    
+    return roi_depths
+
+depth_a1 =np.arange(275, 5,-10)
+depth_a2 =np.arange(220,-50,-10)
+depth_a3 =np.arange(275, 5,-10)
+list_depth = [depth_a1,depth_a1,depth_a2,depth_a3,depth_a3,depth_a3]
+
+for i, dic in enumerate(list_depth[:1]):
+    depth_rois = assign_depths(dffs.shape[0], list_depth[i])
         
 #%% Extract audio correlated ROIs   
      
@@ -139,7 +187,9 @@ kernel = (1 - np.exp(-kernel_t / tau_rise)) * np.exp(-kernel_t / tau_decay)
 kernel /= np.max(kernel)  # Normalize to peak at 1
 
 #Convolve stimulus with kernel
-continuous_stim = convolve(binary_stim, kernel, mode='full')[:len(binary_stim)]   
+#continuous_stim = convolve(binary_stim, kernel, mode='full')[:len(binary_stim)]   
+continuous_stim = convolve(stim, kernel, mode='full')[:len(stim)]   
+
 
 time_activity= np.arange(frame_rate,(dffs_all.shape[1]+frame_rate)*frame_rate,frame_rate)    
 
@@ -147,7 +197,6 @@ time_activity= np.arange(frame_rate,(dffs_all.shape[1]+frame_rate)*frame_rate,fr
 audio_correlated, coeffs, all_coeffs,sorted_indices = f.crosscorr_sort(dffs_all, continuous_stim, cutoff_corr ,Hz,0.0)
 
 dffs_all.shape, continuous_stim.shape
-
 # Plot the mean
 plt.figure(figsize = (15,5))       
 plt.plot(time_activity, np.mean(dffs_all[audio_correlated,:],axis=0))    
@@ -199,4 +248,45 @@ plt.tight_layout()
 
 path_fig = 'C:/Users/wayan.CHRISTAPNI/Princeton Dropbox/Wayan Gauthey/Princeton/Lightbead/Method paper/Figures/Panels/Figure 2/14012025/'
 plt.savefig(path_fig + 'Corr_coeff_2p.png', transparent = True)  
+
+
+
+
+#%% Plot correlation coefficient vs depth
+all_coeffs_sorted = np.copy(all_coeffs)
+sorted_indices_coeff = np.argsort(all_coeffs_sorted)
+all_coeffs_sorted = all_coeffs_sorted[sorted_indices_coeff]
+all_depths_sorted = depth_rois_all[sorted_indices_coeff]
+
+plt.figure(figsize = (10,10))
+plt.scatter(all_depths_sorted, all_coeffs_sorted)
+
+## Only top 0.5
+depths_top05 = depth_rois_all[sorted_indices]
+depths_top05[np.argsort(depths_top05)]
+
+plt.figure(figsize = (10,10))
+plt.scatter(depths_top05, coeffs)
+plt.xlabel('Depth (um)', fontsize = 16)
+plt.ylabel('Corr coeff', fontsize = 16)
+plt.yticks(fontsize = 16)
+plt.xticks(fontsize = 16)
+
+all_depths_sorted.shape, coeffs.shape
+
+sorted_indices_depth_top05 = sorted_indices[np.argsort(depths_top05)]
+
+to_plot_LB = np.flip(zscore(dffs_all[sorted_indices_depth_top05],axis = 1),axis = 0)
+cmap_base = 'viridis' #gnuplot
+vmin, vmax = -0.4, 1.1  # -0.8, 1
+cmap = f.truncate_colormap(cmap_base, vmin, vmax)
+
+plt.figure(figsize = (4.7,5.3)) #(4,5)
+im = plt.imshow(to_plot_LB, aspect = 'auto', vmin = -1, vmax = 1,cmap = cmap, extent = [0.035,258,0,1700])   
+plt.tight_layout()
+plt.colorbar(im)
+plt.yticks([])
+#plt.fill_between(time_audio_LB,y1=pulse_song+1725, y2=pulse_song +1745,where =pulse_song>0,color='r',alpha=1)
+plt.xlabel('Time (s)')
+plt.tight_layout()
 

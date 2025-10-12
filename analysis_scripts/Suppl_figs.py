@@ -11,7 +11,7 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import functions as f
+import Functions as f
 from scipy.stats import zscore
 from scipy.io import loadmat
 from scipy.signal import convolve
@@ -199,3 +199,207 @@ for i, dic in enumerate(list_dic):
     
 
     
+#%% 
+
+################################################################
+# Extract ROIs by comparing to a null distribution
+################################################################
+
+## Load data
+list_dic = ['GCaMP6f_04032024_a2_r1.pkl' ,'GCaMP6f_04032024_a2_r5.pkl'] 
+path_dico_LB = 'D:/Wayan/LightBead/method paper/dico data/zscored/supervoxels_2000/'
+
+n_shuffle = 500
+
+for i, dic in enumerate(list_dic[:1]):
+
+    data = pd.read_pickle(path_dico_LB + dic)
+    print('Run:', dic)
+    
+    dffs = data['dffs_aligned'][:,:min_dim] 
+    time_audio = data['time_audio_aligned']
+    pulse_song = data['pulse_song']
+    
+    time_activity= np.arange(fr_LB,(dffs.shape[1]+fr_LB)*fr_LB,fr_LB)  
+    
+    
+    #1) z score dffs and the stimulus
+    dffs_z = zscore(dffs,axis = 1)
+    
+    stim = f.create_stim(dffs_z, start_block_seconds_LB,end_block_seconds_LB,Hz_LB, t_i2c=0)
+    # Create kernel
+    tau_rise = 0.050  # 50 ms rise time
+    tau_decay = 0.140  # 140 ms decay time
+    dt = fr_LB  
+    kernel_duration = 1.0  
+    kernel_t = np.arange(0, kernel_duration, dt)
+    kernel = (1 - np.exp(-kernel_t / tau_rise)) * np.exp(-kernel_t / tau_decay)
+    kernel /= np.max(kernel)  
+    #Convolve stimulus with kernel
+    continuous_stim = convolve(stim, kernel, mode='full')[:len(stim)] 
+    time_filter = np.arange(0,len(stim))/Hz_LB 
+    conv = np.convolve (stim, kernel, mode = 'same')
+    #conv = conv/np.max(conv)
+    conv_z = zscore(conv) 
+    
+    #2) compute correlation coefficient of each ROI with the stimulus
+    audio_correlated, coeffs, all_coeffs, sort_i = f.crosscorr_sort(dffs_z, conv_z, 100 ,Hz_LB,0.0)
+    
+    
+    
+    #3) Randomly shuffle each ROI N times and get correlation coefficient for each shuffle
+    
+    
+    
+    coeffs_shuffle_all = np.zeros((dffs_z.shape[0],n_shuffle))
+    
+    for i in range(n_shuffle):
+        # shuffle all rows
+        d_shuffled = shuffle_rows_numpy(dffs_z, seed=i, key_dtype=np.float32)
+        # extract correlation coefficient
+        audio_correlated_shuffle, coeffs_shuffle, all_coeffs_shuffle, sort_i_shuffle = f.crosscorr_sort(d_shuffled, conv_z, 100 ,Hz_LB,0.0)
+        # store coefficients
+        coeffs_shuffle_all[:,i] = all_coeffs_shuffle
+    
+    all_coeffs_shuffle.shape    
+    #4)  Compute p values
+    pvals = permutation_pvals_two_sided(all_coeffs, coeffs_shuffle_all)
+
+
+#5) Compute FDR
+sig_mask, pvals_bh = fdr_bh(pvals, q=0.05)
+np.sum(sig_mask)
+np.sum(pvals<0.05)
+np.min(pvals)
+
+
+
+
+
+# 6) plot the extracted ROIs
+
+# First we sort them bz coeff
+audio_correlated_o, coeffs_o, all_coeffs_o, sort_i_o = f.crosscorr_sort(dffs_z, conv_z, 0.5 ,Hz_LB,0.0)
+audio_correlated, coeffs, all_coeffs, sort_i = f.crosscorr_sort(dffs_z[pvals<0.05,:], conv_z, 100 ,Hz_LB,0.0)
+
+
+to_plot = np.flip(zscore(dffs_z[pvals<0.05,:][audio_correlated,:], axis = 1),axis = 0)
+
+plt.figure(figsize = (5,5))
+im = plt.imshow(to_plot, aspect = 'auto', vmin = -1.0, vmax = 1.0,cmap = 'viridis')
+plt.xticks(fontsize = 18)
+plt.yticks([])
+#plt.fill_between(time_audio,y1=pulse_song+3676, y2=pulse_song+3712,where =pulse_song>0,color='r',alpha=1)
+plt.tight_layout()
+plt.xlabel('Time (s)',fontsize = 18)
+plt.ylabel('ROIs',fontsize = 18)
+plt.tight_layout()
+
+roiss = np.arange(0,54000)
+roiss[pvals<0.05]
+
+
+count = 0
+for i, roi in enumerate(sort_i_o):
+    if roi in roiss[pvals<0.05]:
+        count +=1
+
+sort_i[-1]
+sort_i_o[-1]
+
+plt.figure()
+plt.plot(dffs_z[pvals<0.05,:][audio_correlated[-1],:])
+
+def shuffle_rows_numpy(X, seed=0, key_dtype=np.float32):
+    rng  = np.random.default_rng(seed)
+    keys = rng.random(X.shape, dtype=key_dtype)         # ~ size(X)
+    idx  = np.argsort(keys, axis=1, kind='quicksort')   # int64 indices (~2× size(X) if X is float32)
+    del keys                                             # free keys before the gather
+    Xsh  = np.take_along_axis(X, idx, axis=1)           # new array same dtype/shape as X
+    return Xsh
+
+
+
+plt.figure(figsize = (15,5))
+plt.plot(dffs_z[0,:], color = 'k')
+
+plt.figure(figsize = (15,5))
+plt.plot(d_shuffled[0,:], color = 'b')
+
+
+def permutation_pvals_two_sided(r_obs, r_null):
+    """
+    Compute two-sided permutation p-values:
+      p_i = (1 + #{ |r_null| >= |r_obs_i| }) / (N_i + 1)
+
+    Parameters
+    ----------
+    r_obs : array-like, shape (n_rois,)
+        Observed correlations per ROI.
+    r_null : array-like, shape (n_rois, n_perm)  OR  (n_perm,)
+        Null correlations from shuffles. If 2D, each row corresponds to that ROI's null.
+        If 1D, a pooled null used for all ROIs.
+
+    Returns
+    -------
+    pvals : ndarray, shape (n_rois,)
+        Two-sided permutation p-values for each ROI.
+    """
+    r_obs = np.asarray(r_obs, dtype=np.float64).reshape(-1)
+    abs_obs = np.abs(r_obs)
+
+    r_null = np.asarray(r_null, dtype=np.float64)
+
+    if r_null.ndim == 1:
+        # Pooled null, broadcast to all ROIs
+        abs_null = np.abs(r_null)[None, :]                     # (1, n_perm)
+        valid = ~np.isnan(abs_null)                            # (1, n_perm)
+        N = valid.sum(axis=1).astype(np.int64)                 # (1,)
+        ge = (abs_null >= abs_obs[:, None]) & valid            # (n_rois, n_perm)
+        counts = ge.sum(axis=1)                                # (n_rois,)
+        pvals = (1.0 + counts) / (N[0] + 1.0)                  # scalar N for all ROIs
+        return pvals
+
+    elif r_null.ndim == 2:
+        if r_null.shape[0] != r_obs.shape[0]:
+            raise ValueError("For per-ROI nulls, r_null must have shape (n_rois, n_perm).")
+        abs_null = np.abs(r_null)                              # (n_rois, n_perm)
+        valid = ~np.isnan(abs_null)                            # (n_rois, n_perm)
+        N = valid.sum(axis=1).astype(np.int64)                 # (n_rois,)
+        # Compare each ROI's |obs| to its own null distribution
+        ge = (abs_null >= abs_obs[:, None]) & valid            # (n_rois, n_perm)
+        counts = ge.sum(axis=1)                                # (n_rois,)
+        pvals = (1.0 + counts) / (N + 1.0)                     # (n_rois,)
+        return pvals
+
+    else:
+        raise ValueError("r_null must be 1D (pooled) or 2D (per-ROI).")
+        
+        
+def fdr_bh(pvals, q=0.05):
+    """
+    Benjamini-Hochberg FDR control.
+    Returns a boolean mask of discoveries and the BH-adjusted p-values.
+    """
+    pvals = np.asarray(pvals, dtype=np.float64)
+    n = pvals.size
+    order = np.argsort(pvals)
+    ranked = pvals[order]
+    thresh = q * (np.arange(1, n + 1) / n)
+    is_sig = ranked <= thresh
+    if np.any(is_sig):
+        k = np.max(np.where(is_sig)[0])
+        cutoff = ranked[k]
+        discoveries = pvals <= cutoff
+    else:
+        discoveries = np.zeros_like(pvals, dtype=bool)
+
+    # Adjusted p-values
+    adj = np.empty_like(ranked)
+    # monotone step-up
+    adj[-1] = ranked[-1] * n / n
+    for i in range(n - 2, -1, -1):
+        adj[i] = min(adj[i + 1], ranked[i] * n / (i + 1))
+    adj_p = np.empty_like(adj)
+    adj_p[order] = adj
+    return discoveries, adj_p        
