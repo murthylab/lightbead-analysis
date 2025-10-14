@@ -545,7 +545,7 @@ def fourier_mean_activity_interpolate(dffs,start_block_seconds,end_block_seconds
             plt.xticks(fontsize =34)
             plt.yticks(fontsize =34,)
             plt.locator_params(axis='y', nbins=4)
-            plt.title('Spectrum block {0}Hz'.format(HZ[k]))
+            #plt.title('Spectrum block {0}Hz'.format(HZ[k]))
             plt.tight_layout()
             if path != None:
                 plt.savefig(path + 'spectrum_block_' + str(k) + '_'+ scope + '.pdf', transparent = True)

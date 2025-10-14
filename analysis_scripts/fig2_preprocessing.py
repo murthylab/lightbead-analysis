@@ -15,6 +15,8 @@ from _aux import loadmat_h5
 import os
 from scipy.signal import convolve
 from scipy.stats import zscore
+import seaborn as sns
+from matplotlib import cm, colors
 
 matplotlib.rcParams['axes.spines.right'] = False
 matplotlib.rcParams['axes.spines.top'] = False
@@ -44,7 +46,7 @@ if scope == 'LB':
     min_dim = 7977
     Hz, Hz_target = 28.2893, 28.2893  
     frame_rate = 1/Hz
-    name_export = 'dffs_audio_LB_corr_top05_all'
+    name_export = 'dffs_audio_LB_corr_top05_all_red'
     
     depth_a1 =np.arange(275, 5,-10)
     depth_a2 =np.arange(220,-50,-10)
@@ -53,6 +55,7 @@ if scope == 'LB':
     
     #TODO CHANGE THIS TO THE DESIRED FOLDER containng the pkl files containing the aligned data and the labels
     path_dico = 'D:/Wayan/LightBead/method paper/dico data/zscored/supervoxels_2000/'
+    path_dico_red = 'D:/Wayan/LightBead/method paper/dico data/zscored/supervoxels_2000/Red/'
     path_labels = 'D:/Wayan/LightBead/method paper/dico data/Labels/zscored/2000/' 
     
              
@@ -87,10 +90,12 @@ cutoff_corr = 0.5
 
 for i, dic in enumerate(list_dic):
     data = pd.read_pickle(path_dico + dic)
+    #data_red = pd.read_pickle(path_dico_red + dic)
     print('Run:', dic)
     
     if scope == 'LB':
         dffs = data['dffs_aligned'][:,:min_dim]
+        #dffs_red = data_red['dffs_aligned'][:,:min_dim]
         time_audio = data['time_audio_aligned']
         pulse_song = data['pulse_song']
         labels = loadmat_h5(os.path.join(path_labels, fname[i]))
@@ -110,9 +115,11 @@ for i, dic in enumerate(list_dic):
 
     if i == 0:
         dffs_all = dffs
+        #dffs_all_red = dffs_red
         depth_rois_all = depth_rois
     else:    
         dffs_all = np.vstack((dffs_all,dffs))
+        #dffs_all_red = np.vstack((dffs_all_red,dffs_red))
         depth_rois_all = np.hstack((depth_rois_all,depth_rois))
         
 
@@ -164,7 +171,7 @@ stim = f.create_stim(dffs_all, start_block_seconds,end_block_seconds,Hz, t_i2c=0
 tau_rise = 0.050  # 50 ms rise time
 tau_decay = 0.140  # 140 ms decay time
 dt = frame_rate  
-
+'''
 total_duration = np.round((dffs_all.shape[1]-1)/Hz) 
 t = np.arange(0, total_duration, dt)
 binary_stim = np.zeros_like(t)
@@ -179,7 +186,7 @@ for i in range(num_blocks):
     start_idx = int(block_start / dt)
     end_idx = int(block_end / dt)
     binary_stim[start_idx:end_idx] = 1
-
+'''
 # Define GCaMP6f kernel 
 kernel_duration = 1.0  
 kernel_t = np.arange(0, kernel_duration, dt)
@@ -196,7 +203,6 @@ time_activity= np.arange(frame_rate,(dffs_all.shape[1]+frame_rate)*frame_rate,fr
 # Extract the top 0.5% of ROIs with highest correlation coeficient with the stimulus
 audio_correlated, coeffs, all_coeffs,sorted_indices = f.crosscorr_sort(dffs_all, continuous_stim, cutoff_corr ,Hz,0.0)
 
-dffs_all.shape, continuous_stim.shape
 # Plot the mean
 plt.figure(figsize = (15,5))       
 plt.plot(time_activity, np.mean(dffs_all[audio_correlated,:],axis=0))    
@@ -207,6 +213,30 @@ plt.title('Mean activity {}'.format(dic))
 plt.xlabel('Time (s)')
 plt.ylabel('DF/F')
 
+## Get the trial at which the ROIs was extracted from
+count_1, count_2,count_3, count_4,count_5, count_6 = 0,0,0,0,0,0
+trial1,trial2,trial3,trial4,trial5,trial6 = [],[],[],[],[],[]
+for roi in sorted_indices:
+    if roi<54000:
+        count_1 += 1
+        trial1.append(roi)
+    if (roi>54000) and (roi<108000):
+        count_2 += 1
+        trial2.append(roi)
+    if (roi>108000) and (roi<162000):
+        count_3 += 1
+        trial3.append(roi)
+    if (roi>162000) and (roi<216000):
+        count_4 += 1
+        trial4.append(roi)
+    if (roi>216000) and (roi<270000):
+        count_5 += 1
+        trial5.append(roi)
+    if roi>270000:
+        count_6 += 1
+        trial6.append(roi)
+        
+
 
 #%% Export audio correlated ROIs
 
@@ -214,7 +244,7 @@ if export == True:
     dic = {'audio_correlated': dffs_all[audio_correlated,:]}
      
      #TODO CHANGE THIS TO THE DESIRED FOLDER
-    path = 'D:/Wayan/LightBead/method paper/clustering/zscored/supervoxels 2000/'     
+    path = 'D:/Wayan/LightBead/method paper/clustering/zscored/supervoxels 2000/Red/'     
     with open(path + name_export +'.pkl', 'wb') as f:
     
        pickle.dump(dic, f)
@@ -228,6 +258,12 @@ if export == True:
 all_coeffs_sorted = np.copy(all_coeffs)
 sorted_indices = np.argsort(all_coeffs_sorted)
 all_coeffs_sorted = all_coeffs_sorted[sorted_indices]
+
+# Get red coeffs
+audio_correlated_red, coeffs_red, all_coeffs_red,sorted_indices_red = f.crosscorr_sort(dffs_all_red[162000:,:], continuous_stim, cutoff_corr ,Hz,0.0)
+all_coeffs_sorted_red = np.copy(all_coeffs_red)
+sorted_indices_red = np.argsort(all_coeffs_sorted_red)
+all_coeffs_sorted_red = all_coeffs_sorted_red[sorted_indices_red]
 
 if scope == 'LB':
     col = 'g.'
@@ -258,25 +294,234 @@ sorted_indices_coeff = np.argsort(all_coeffs_sorted)
 all_coeffs_sorted = all_coeffs_sorted[sorted_indices_coeff]
 all_depths_sorted = depth_rois_all[sorted_indices_coeff]
 
-plt.figure(figsize = (10,10))
-plt.scatter(all_depths_sorted, all_coeffs_sorted)
+#plt.figure(figsize = (10,10))
+#plt.scatter(all_depths_sorted, all_coeffs_sorted)
 
 ## Only top 0.5
 depths_top05 = depth_rois_all[sorted_indices]
 depths_top05[np.argsort(depths_top05)]
 
+#### Sorting by individual brain
+depths_top05 = depth_rois_all[trial6]
+depths_top05[np.argsort(depths_top05)]
+
+from collections import defaultdict, deque
+pos_map = defaultdict(deque)
+for i,v in enumerate(sorted_indices):
+    pos_map[v].append(i)
+    
+out = np.empty(len(trial6),dtype = int)
+for i, v in enumerate(trial6):
+    out[i] = pos_map[v].popleft()    
+#######
+
 plt.figure(figsize = (10,10))
-plt.scatter(depths_top05, coeffs)
+#plt.scatter(depths_top05, coeffs, color = 'g',alpha = 0.2)
+plt.scatter(depths_top05, coeffs, color = 'g',alpha = 0.2)
 plt.xlabel('Depth (um)', fontsize = 16)
 plt.ylabel('Corr coeff', fontsize = 16)
 plt.yticks(fontsize = 16)
 plt.xticks(fontsize = 16)
+plt.xlim(33.5,286.5)
+plt.ylim(0,0.63)
+
+
+# =============================
+### Violin plot
+# =============================
+bin_width=30
+jitter_sd_frac=0.05
+d = depths_top05 #all_depths_sorted
+c = coeffs #all_coeffs_sorted
+# Determine depth range, snap to bin edges
+depth_min = np.floor(d.min() / bin_width) * bin_width
+if depth_min<0:
+    depth_min = 0
+depth_max = np.ceil(d.max() / bin_width) * bin_width
+# Bin edges and centers
+bin_edges = np.arange(depth_min, depth_max + bin_width, bin_width, dtype=float)
+bin_centers = bin_edges[:-1] + bin_width / 2.0
+# Assign each ROI to a bin index
+bin_idx = np.digitize(d, bin_edges, right=False) - 1
+data_per_bin = []
+centers_kept = []
+counts_kept = []
+for i in range(len(bin_edges) - 1):
+    vals = c[bin_idx == i]  
+    data_per_bin.append(vals)
+    centers_kept.append(bin_centers[i])
+    counts_kept.append(vals.size)
+
+centers_kept = np.asarray(centers_kept)
+
+### If color code coeffs
+vmin = np.nanmin(c)
+vmax = np.nanmax(c)
+
+### If color code depth
+cmap="Greens"
+norm = colors.Normalize(vmin=depth_min, vmax=depth_max)
+sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+bin_colors = sm.to_rgba(centers_kept)   # RGBA color per kept bin
+
+fig, ax = plt.subplots(figsize=(8, 5))
+parts = ax.violinplot(
+    data_per_bin,
+    positions=centers_kept,
+    widths=bin_width * 0.85,
+    showmeans=True,
+    showmedians=False,
+    showextrema=False,
+ )
+
+# Color each violin body by its bin depth
+for body, col in zip(parts['bodies'], bin_colors):
+    body.set_facecolor(col); body.set_edgecolor(col); body.set_alpha(0.7)
+if 'cmedians' in parts:
+    parts['cmedians'].set_color("black") 
+if 'cmeans' in parts:    
+    parts['cmeans'].set_color("black")
+    
+    
+rng = np.random.default_rng(0)
+for x0, vals, col in zip(centers_kept, data_per_bin, bin_colors):
+    x = rng.normal(loc=x0, scale=bin_width * jitter_sd_frac, size=vals.size)
+    #ax.scatter(x, vals, s=8, alpha=0.35, color = 'b')
+    #sc = ax.scatter(x, vals, s=10, alpha=0.7, zorder=3,c=vals, cmap=cmap, vmin=vmin, vmax=vmax)
+    #ax.scatter(x, vals, s=10, alpha=0.85, zorder=3, c=[col])        
+    ax.scatter(x, vals,s=12, c=[col], edgecolors=['k'],alpha=0.85, zorder=3,linewidths=0.1)
+
+ax.set_xlabel("Depth (µm)", fontsize = 16)
+ax.set_ylabel("Correlation coefficient", fontsize = 16)
+ax.set_xticks(centers_kept)
+ax.set_xticklabels([f"{int(x - bin_width/2)}–{int(x + bin_width/2)}" for x in centers_kept], rotation=45, ha="right", fontsize=16)
+ax.tick_params(axis='y', labelsize=16)
+#ax.grid(True, axis='y', linestyle=':', alpha=0.5)
+
+ylim = ax.get_ylim()
+y_text = ylim[0] - 0.02 * (ylim[1] - ylim[0])
+for x0, n in zip(centers_kept, counts_kept):
+    ax.text(x0, y_text, f"n={n}", ha="center", va="bottom", fontsize=12)
+ax.set_ylim(y_text,)
+
+fig.tight_layout()
+
+
+
+
+# =============================
+# Box plot
+# =============================
+bin_width=30
+jitter_sd_frac=0.05
+# Determine depth range, snap to bin edges
+depth_min = np.floor(depths_top05.min() / bin_width) * bin_width
+depth_max = np.ceil(depths_top05.max() / bin_width) * bin_width
+# Bin edges and centers
+bin_edges = np.arange(depth_min, depth_max + bin_width, bin_width, dtype=float)
+bin_centers = bin_edges[:-1] + bin_width / 2.0
+# Assign each ROI to a bin index
+bin_idx = np.digitize(depths_top05, bin_edges, right=False) - 1
+data_per_bin = []
+centers_kept = []
+counts_kept = []
+for i in range(len(bin_edges) - 1):
+    vals = coeffs[bin_idx == i]
+    data_per_bin.append(vals)
+    centers_kept.append(bin_centers[i])
+    counts_kept.append(vals.size)
+
+centers_kept = np.asarray(centers_kept)
+
+### If color code coeffs
+vmin = np.nanmin(coeffs)
+vmax = np.nanmax(coeffs)
+
+### If color code depth
+cmap="Greens"
+norm = colors.Normalize(vmin=depth_min, vmax=depth_max)
+sm = cm.ScalarMappable(norm=norm, cmap=cmap)
+bin_colors = sm.to_rgba(centers_kept)   # RGBA color per kept bin
+
+fig, ax = plt.subplots(figsize=(8, 5))
+bp = ax.boxplot(
+    data_per_bin,
+    positions=centers_kept,
+    widths=bin_width * 0.65,
+    patch_artist=True,
+    showfliers=False,
+    showmeans = True,
+    whis=1.5,
+    manage_ticks=False
+ )
+
+# Color each box (and its edges) to match the bin
+for patch, col in zip(bp['boxes'], bin_colors):
+    patch.set_facecolor(col)
+    patch.set_edgecolor(col)
+    patch.set_alpha(0.7)
+    patch.set_linewidth(1.0)
+
+# Color whiskers and caps to match, keep medians visible (black)
+for i, (w1, w2) in enumerate(zip(bp['whiskers'][0::2], bp['whiskers'][1::2])):
+    col = bin_colors[i]
+    w1.set_color(col); w2.set_color(col)
+for i, (cap1, cap2) in enumerate(zip(bp['caps'][0::2], bp['caps'][1::2])):
+    col = bin_colors[i]
+    cap1.set_color(col); cap2.set_color(col)
+#for med in bp['medians']:
+#    med.set_color('black'); med.set_linewidth(1.5)
+for med in bp['means']:
+    med.set_color('black'); med.set_linewidth(1.5)
+    
+rng = np.random.default_rng(0)
+for x0, vals, col in zip(centers_kept, data_per_bin, bin_colors):
+    x = rng.normal(loc=x0, scale=bin_width * jitter_sd_frac, size=vals.size)
+    #ax.scatter(x, vals, s=8, alpha=0.35, color = 'b')
+    #sc = ax.scatter(x, vals, s=10, alpha=0.7, zorder=3,c=vals, cmap=cmap, vmin=vmin, vmax=vmax)
+    #ax.scatter(x, vals, s=10, alpha=0.85, zorder=3, c=[col])        
+    ax.scatter(x, vals,s=12, c=[col], edgecolors=['k'],alpha=0.85, zorder=3,linewidths=0.1)
+
+ax.set_xlabel("Depth (µm)", fontsize = 16)
+ax.set_ylabel("Correlation coefficient", fontsize = 16)
+ax.set_xticks(centers_kept)
+ax.set_xticklabels([f"{int(x - bin_width/2)}–{int(x + bin_width/2)}" for x in centers_kept], rotation=45, ha="right", fontsize=16)
+ax.tick_params(axis='y', labelsize=16)
+#ax.grid(True, axis='y', linestyle=':', alpha=0.5)
+
+ylim = ax.get_ylim()
+y_text = ylim[0] - 0.02 * (ylim[1] - ylim[0])
+for x0, n in zip(centers_kept, counts_kept):
+    ax.text(x0, y_text, f"n={n}", ha="center", va="bottom", fontsize=12)
+ax.set_ylim(y_text,)
+
+fig.tight_layout()
+
+
+
+# =============================
+# HM
+# =============================
+
+
+### Sort ROIs by depth and by coeff if tie
+order = np.lexsort((-coeffs, depths_top05))
+dffs_sorted_depth    = dffs_all[sorted_indices,:][order]
+depths_sorted  = depths_top05[order]
+coeffs_sorted  = coeffs[order]
+
 
 all_depths_sorted.shape, coeffs.shape
 
+sorted_indices.shape,depths_top05.shape
+
 sorted_indices_depth_top05 = sorted_indices[np.argsort(depths_top05)]
 
-to_plot_LB = np.flip(zscore(dffs_all[sorted_indices_depth_top05],axis = 1),axis = 0)
+to_plot_LB = zscore(dffs_sorted_depth[:,:7300],axis = 1)
+to_plot_LB = zscore(dffs_all[sorted_indices_depth_top05,:7300],axis = 1)
+to_plot_LB = np.flip(zscore(dffs_all[trial6],axis = 1),axis = 0)
+
+
 cmap_base = 'viridis' #gnuplot
 vmin, vmax = -0.4, 1.1  # -0.8, 1
 cmap = f.truncate_colormap(cmap_base, vmin, vmax)
@@ -284,9 +529,48 @@ cmap = f.truncate_colormap(cmap_base, vmin, vmax)
 plt.figure(figsize = (4.7,5.3)) #(4,5)
 im = plt.imshow(to_plot_LB, aspect = 'auto', vmin = -1, vmax = 1,cmap = cmap, extent = [0.035,258,0,1700])   
 plt.tight_layout()
-plt.colorbar(im)
+#plt.colorbar(im)
 plt.yticks([])
+plt.xticks(fontsize = '16', color = 'w')
 #plt.fill_between(time_audio_LB,y1=pulse_song+1725, y2=pulse_song +1745,where =pulse_song>0,color='r',alpha=1)
-plt.xlabel('Time (s)')
+#plt.xlabel('Time (s)', fontsize = '16')
+plt.tight_layout()
+
+
+
+#### For individual brains
+
+depths_top05 = depth_rois_all[trial6]
+
+from collections import defaultdict, deque
+pos_map = defaultdict(deque)
+for i,v in enumerate(sorted_indices):
+    pos_map[v].append(i)
+    
+out = np.empty(len(trial6),dtype = int)
+for i, v in enumerate(trial6):
+    out[i] = pos_map[v].popleft()    
+
+
+order = np.lexsort((-coeffs[out], depths_top05))
+dffs_sorted_depth = dffs_all[trial6,:][order]
+
+
+order.shape,dffs_sorted_depth.shape
+
+to_plot_LB = zscore(dffs_sorted_depth,axis = 1)
+
+cmap_base = 'viridis' #gnuplot
+vmin, vmax = -0.4, 1.1  # -0.8, 1
+cmap = f.truncate_colormap(cmap_base, vmin, vmax)
+
+plt.figure(figsize = (4.7,5.3)) #(4,5)
+im = plt.imshow(to_plot_LB, aspect = 'auto', vmin = -1, vmax = 1,cmap = cmap, extent = [0.035,258,0,400])   
+plt.tight_layout()
+#plt.colorbar(im)
+plt.yticks([])
+plt.xticks(fontsize = '16')
+#plt.fill_between(time_audio_LB,y1=pulse_song+1725, y2=pulse_song +1745,where =pulse_song>0,color='r',alpha=1)
+plt.xlabel('Time (s)', fontsize = '16')
 plt.tight_layout()
 

@@ -9,7 +9,7 @@ import pandas as pd
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-import functions as f
+import Functions as f
 from scipy.stats import zscore
 from scipy.io import loadmat
 
@@ -29,7 +29,7 @@ matplotlib.rcParams['ps.fonttype'] = 42
 
 #TODO CHANGE THIS TO THE DESIRED FOLDER contaning the data with audio correlated ROIs
 path = 'D:/Wayan/LightBead/method paper/clustering/zscored/supervoxels 2000/' 
-data_LB = pd.read_pickle(path + 'dffs_audio_LB_corr_top05_all'+'.pkl') 
+data_LB = pd.read_pickle(path + 'dffs_audio_LB_corr_top05_all_red'+'.pkl') 
 data_2p = pd.read_pickle(path + 'dffs_audio_2p_corr_top05_all'+'.pkl')  
 
 dffs_LB = data_LB['audio_correlated'][:,1:]
@@ -80,17 +80,21 @@ end_block_seconds_2p = np.array([15,35,55,75,94,113,133,153,173,192.99894,212.99
 
 ## For LB
 to_plot_LB = np.flip(zscore(dffs_LB,axis = 1)[:,:7300],axis = 0)
+to_plot_LB = np.flip(dffs_LB[:,:7300],axis = 0)
+
 cmap_base = 'viridis' #gnuplot
 vmin, vmax = -0.4, 1.1  # -0.8, 1
 cmap = f.truncate_colormap(cmap_base, vmin, vmax)
 
 plt.figure(figsize = (4.7,5.3)) #(4,5)
-im = plt.imshow(to_plot_LB, aspect = 'auto', vmin = -1, vmax = 1,cmap = cmap, extent = [0.035,258,0,1700])   
+im = plt.imshow(to_plot_LB, aspect = 'auto', vmin = -2, vmax = 2,cmap = cmap, extent = [0.035,258,0,1700])   
+#im = plt.imshow(to_plot_LB, aspect = 'auto',vmin = -0.02,vmax = 0.02,cmap = 'viridis', extent = [0.035,258,0,1700])   
 plt.tight_layout()
-plt.colorbar(im)
+#plt.colorbar(im)
 plt.yticks([])
+plt.xticks(color = 'w')
 plt.fill_between(time_audio_LB,y1=pulse_song+1725, y2=pulse_song +1745,where =pulse_song>0,color='r',alpha=1)
-plt.xlabel('Time (s)')
+#plt.xlabel('Time (s)')
 plt.tight_layout()
 
 
@@ -114,13 +118,13 @@ plt.tight_layout()
 
 
 #%% Plot mean activity
-
+path = 'C:/Users/wayan.CHRISTAPNI/Princeton Dropbox/Wayan Gauthey/Princeton/Lightbead/Method paper/Figures/Panels/Figure 2/14012025/Revision round 1/'
 
 ### For LBM
 mean_trace_per_pair_LB,sem_trace_per_pair_LB = f.compute_mean_time_series_per_block_pair(
     dffs=zscore(dffs_LB,axis =1),
     time_activity=time_activity_LB,
-    Hz=Hz_LB,
+    frame_rate=Hz_LB,
     start_block_seconds=start_block_seconds_LB[1:],
     end_block_seconds=end_block_seconds_LB[1:],
     t_added = 2,
@@ -129,9 +133,9 @@ mean_trace_per_pair_LB,sem_trace_per_pair_LB = f.compute_mean_time_series_per_bl
 
 
 mean_stim_traces_LB = f.extract_single_stimulus_per_block_pair(
-    pulse_song=pulse_song,
+    stimulus=pulse_song,
     time_audio=time_audio_LB,
-    Hz=100,
+    frame_rate=100,
     start_block_seconds=start_block_seconds_LB[1:],
     end_block_seconds=end_block_seconds_LB[1:],
     t_added = 2
@@ -170,7 +174,7 @@ f.plot_calcium_with_stimulus_overlay(mean_trace_per_pair_2p,sem_trace_per_pair_2
 
 #%% Plot the fourier of the mean
 
-f.fourier_mean_activity_interpolate(zscore(dffs_LB,axis = 1),start_block_seconds_LB,end_block_seconds_LB,0,Hz_LB,time_activity_LB,'LB', Hz_LB,142, None,14, 'green')
+f.fourier_mean_activity_interpolate(zscore(dffs_LB,axis = 1),start_block_seconds_LB,end_block_seconds_LB,0,Hz_LB,time_activity_LB,'LB', Hz_LB,142, path,14, 'green')
 f.fourier_mean_activity_interpolate(zscore(dffs_2p,axis = 1),start_block_seconds_2p,end_block_seconds_2p,2,Hz_2p,time_activity_2p,'2p', Hz_LB,282, None,1.1, 'magenta')
 
 
@@ -195,10 +199,9 @@ plt.fill_between(time_audio_LB,y1=(max_trace*pulse_song)+0.05,y2=(max_trace*puls
 plt.xlim(0,time_activity_LB[-1])
 #plt.xticks([60,70,80,90,100,110,120,130,140], [0,10,20,30,40,50,60,70,80], fontsize = 14)
 #plt.yticks(fontsize = 14)
-plt.xlabel('Time (s)', fontsize = 24)
-plt.ylabel('Z(DF/F)', fontsize = 24)
-plt.xticks(fontsize = 22)
-plt.yticks(fontsize = 22)
+#plt.ylabel('Z(DF/F)', fontsize = 24)
+plt.xticks(fontsize = 22, color = 'w')
+plt.yticks(fontsize = 22, color = 'w')
 plt.locator_params(axis='y', nbins=3)
 plt.tight_layout()
 
