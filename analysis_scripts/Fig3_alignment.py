@@ -1,12 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Created on Tue May 21 12:22:30 2024
-
-@author: wayan
-
-This script takes the output of supervoxels, the sound server files,
-and the decoded message form I2C and align everything.
-Then it creates a dictionary of the data for the 60Hz data
+This script takes the output of the signal extraction pipeline, the sound server files, and  I2C information to align the data.
+The aligned data is then saved for future analyses in Fig 3
 """
 #%% imports 
 
@@ -19,9 +14,6 @@ import os
 from scipy.io import loadmat
 import h5py
 import pickle
-import functions as f
-from scipy.signal import convolve
-
 
 matplotlib.rcParams['axes.spines.right'] = False
 matplotlib.rcParams['axes.spines.top'] = False
@@ -220,57 +212,9 @@ time_activity= np.arange(frame_rate,(dffs.shape[1]+frame_rate)*frame_rate,frame_
 
 # %%
 ##############################################
-# Extract auditory-correlated ROIs at 60 Hz
+# Export data for future analyses
 ##############################################
 
-# Creat stimulus with same number of time points as activity
-stim = f.create_stim_train(dffs_align, start_block_seconds,end_block_seconds,Hz, t_i2c=0) 
-
-# Create kernel
-tau_rise = 0.050  # 50 ms rise time
-tau_decay = 0.140  # 140 ms decay time
-dt = frame_rate  
-
-total_duration = np.round((dffs_align.shape[1]-1)/Hz) 
-t = np.arange(0, total_duration, dt)
-
-
-binary_stim = np.zeros_like(t)
-start_first_block = 5  # seconds
-block_duration = 2  # seconds
-silence_duration = 10  # seconds
-num_blocks = 14
-
-for i in range(num_blocks):
-    block_start = start_first_block + i * (block_duration + silence_duration)
-    block_end = block_start + block_duration
-    start_idx = int(block_start / dt)
-    end_idx = int(block_end / dt)
-    binary_stim[start_idx:end_idx] = 1
-
-# Define GCaMP6f kernel 
-kernel_duration = 1.0  
-kernel_t = np.arange(0, kernel_duration, dt)
-kernel = (1 - np.exp(-kernel_t / tau_rise)) * np.exp(-kernel_t / tau_decay)
-kernel /= np.max(kernel)  # Normalize to peak at 1
-
-#Convolve stimulus with kernel
-continuous_stim = convolve(stim, kernel, mode='full')[:len(stim)]
-
-# Extract audio correlated ROIs to check alignment
-audio_correlated, coeffs, all_coeffs,sorted_indices = f.crosscorr_sort(dffs_align, continuous_stim, 0.05 ,Hz,0.0)
-
-### Plot stim and activity to double check alignement
-plt.figure(figsize = (15,5))       
-plt.plot(time_activity_align, np.mean(dffs_align[audio_correlated,:],axis=0))
-max_trace = np.max(np.mean(dffs_align[audio_correlated,:],axis=0))
-plt.fill_between(stimTime[0],y1=max_trace*audio_stim['pulse_song'][0],y2=(max_trace*audio_stim['pulse_song'][0])+0.02,where =audio_stim['pulse_song'][0]>0,color='r',alpha=0.5)
-plt.fill_between(stimTime[0],y1=max_trace*audio_stim['sine_song'][0],y2=max_trace*audio_stim['sine_song'][0]+0.02,where =audio_stim['sine_song'][0]>0,color='b',alpha=0.5)
-plt.xlabel('Time (s)')
-plt.ylabel('DF/F')
-
-
- 
 if generate_dic:
     
    Scope = 'LB'
