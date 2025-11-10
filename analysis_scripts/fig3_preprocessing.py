@@ -1,20 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Jun 14 16:18:22 2025
-
-@author: wayan
+This scripts take the aligned data as inputs, extract auditory ROIs and stores them for future analyses in fig 3.
+It geneerates panel in Figure 3
 """
 
 #%% Imports
 
 import pandas as pd 
 import matplotlib
-import matplotlib.pyplot as plt
 import numpy as np
 import functions as f
 from scipy.stats import zscore
 import scipy.fft
-from pandas import DataFrame
 import pickle
 from _aux import loadmat_h5
 from scipy.io import loadmat
@@ -48,8 +45,6 @@ path_labels = 'D:/Wayan/LightBead/method paper/dico data/Labels/zscored/60Hz/'
 start_block_seconds = np.array([5,25,45,55,65,75,85,95,105,115,125,135,145,155])
 end_block_seconds = np.array([15,35,47,57,67,77,87,97,107,117,127,137,147,157])
 
-
-
 Hz = 60.041
 frame_rate = 1/Hz
 
@@ -62,7 +57,6 @@ export = False
 #TODO CHANGE THIS TO THE DESIRED FOLDER containing plotting version of the stimulus
 audio_dir = "C:/Users/wayan.CHRISTAPNI/Documents/Labs/Murthy/LightBead/Code/audio stimuli/Method paper/"
 file = loadmat(audio_dir + '3min_pulse_train.mat')
-#file = loadmat(audio_dir + '3min_pulse_train_IPI_70.mat')
 stim = file['stim']
 
 
@@ -126,7 +120,6 @@ for i, dic in enumerate(list_dic):
     df = freq_axis[1]-freq_axis[0]
     
     ################# compute absolute power in freq band ################
-    
     index_cutoff = int(dffs.shape[0] * (cut_off_power/100))
     p_matrix = np.sum(fourier_fft[:,f0:f1],axis=1) 
     rois = np.arange(0,dffs.shape[0])
@@ -155,21 +148,6 @@ tau_rise = 0.050  # 50 ms rise time
 tau_decay = 0.140  # 140 ms decay time
 dt = frame_rate  
 
-total_duration = np.round((dffs_all.shape[1]-1)/Hz) 
-t = np.arange(0, total_duration, dt)
-binary_stim = np.zeros_like(t)
-start_first_block = 5  
-block_duration = 10  
-silence_duration = 10  
-num_blocks = 14
-
-for i in range(num_blocks):
-    block_start = start_first_block + i * (block_duration + silence_duration)
-    block_end = block_start + block_duration
-    start_idx = int(block_start / dt)
-    end_idx = int(block_end / dt)
-    binary_stim[start_idx:end_idx] = 1
-
 # Define GCaMP6f kernel 
 kernel_duration = 1.0  
 kernel_t = np.arange(0, kernel_duration, dt)
@@ -177,12 +155,12 @@ kernel = (1 - np.exp(-kernel_t / tau_rise)) * np.exp(-kernel_t / tau_decay)
 kernel /= np.max(kernel)  # Normalize to peak at 1
 
 #Convolve stimulus with kernel
-continuous_stim = convolve(binary_stim, kernel, mode='full')[:len(binary_stim)]   
+continuous_stim = convolve(stim, kernel, mode='full')[:len(stim)]   
 
 time_activity= np.arange(frame_rate,(dffs_all.shape[1]+frame_rate)*frame_rate,frame_rate)    
 
 cutoff_corr = 99 #5
-audio_correlated_corr, coeffs, all_coeffs,sorted_i = f.crosscorr_sort(dffs_all[:], continuous_stim, cutoff_corr ,Hz,0.0) #dffs_all[8100:16200]
+audio_correlated_corr, coeffs, all_coeffs,sorted_i = f.crosscorr_sort(dffs_all[:], continuous_stim, cutoff_corr ,Hz,0.0) 
     
 idx_pos = np.where(coeffs>0)[0].shape[0]
 
@@ -191,9 +169,8 @@ idx_pos = np.where(coeffs>0)[0].shape[0]
 #%% Compute the time it takes the laser to reach each ROI
 
 #================================================================
-### load labels for each dffs and compute location: Facing Up
+### load labels for each dffs and compute location
 #=================================================================
-# Here we rotate the labels 180 counterclockwise and flip around y
 
 n_pixels = 226*216
 t_total = 15 # in ms
@@ -201,7 +178,7 @@ t_total = 15 # in ms
 t_pixels = t_total/n_pixels
 n_roi = 1000
 # define grid with pixel index
-for i, dic in enumerate(list_dic[:]):
+for i, dic in enumerate(list_dic):
     print(i)
     labels = loadmat_h5(os.path.join(path_labels, fname[i]))
     l = labels['labels']
