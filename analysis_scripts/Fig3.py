@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Jun 14 16:15:59 2025
-
-@author: wayan
+This script generates the panels E-J in Figure 3
 """
 
 #%% Imports
@@ -11,11 +9,10 @@ import pandas as pd
 import numpy as np 
 import matplotlib.pyplot as plt
 import matplotlib
-import functions as f
+import Functions as f
 from scipy.signal import find_peaks
 from scipy.fft import rfftfreq
 from scipy.io import loadmat
-#from sklearn.utils import shuffle
 from scipy.stats import sem
 from scipy.stats import ttest_ind  
 from statsmodels.stats.multitest import multipletests
@@ -85,13 +82,10 @@ shuffled_activity = f.shuffle_within_blocks(
 )
 
 
-ps_mean , fourier_roi= f.fourier_and_peaks_mean(dffs,start_block_seconds,end_block_seconds,Hz,stim,time_activity,None)
+ps_mean , fourier_roi= f.fourier_and_peaks_mean(dffs,start_block_seconds,end_block_seconds,Hz,time_activity,None)
 ps_mean = np.array(ps_mean).flatten()
 
-ps_mean_shuffled , fourier_roi_shuffled= f.fourier_and_peaks_mean(shuffled_activity,start_block_seconds,end_block_seconds,Hz,stim,time_activity,None)
-ps_mean_shuffled = np.array(ps_mean_shuffled).flatten()
-
-ps_off_mean , fourier_roi_off= f.fourier_and_peaks_mean(dffs,start_block_seconds_off,end_block_seconds_off,Hz,stim,time_activity,None)
+ps_off_mean , fourier_roi_off= f.fourier_and_peaks_mean(dffs,start_block_seconds_off,end_block_seconds_off,Hz,time_activity,None)
 ps_off_mean = np.array(ps_off_mean).flatten()
 
 
@@ -99,16 +93,12 @@ ps_off_mean = np.array(ps_off_mean).flatten()
 # Plot absolute power
 #################################
 
-f.plot_power_ROIs_all(ps_mean,ps_mean_shuffled,ps_off_mean, None,'all') # black line is when stimulus is off, magenta is when activity is shuffled
+f.plot_power_ROIs_all_no_shuffle(ps_mean,ps_off_mean, None,'all_no_shuffle') 
 
 ##### Compute pvals abs power
-t_stat_12, p_val_12 = ttest_ind(ps_mean, ps_mean_shuffled, equal_var = False)
 t_stat_13, p_val_13 = ttest_ind(ps_mean, ps_off_mean, equal_var = False)
-t_stat_23, p_val_23 = ttest_ind(ps_off_mean, ps_mean_shuffled, equal_var = False)
 
-p_values = [p_val_12, p_val_13, p_val_23]
-comparisons = ['on vs shuffled', 'on vs off', 'off vs shuffled']
-
+p_values = [ p_val_13]
 alpha = 0.05
 reject, pvals_corrected, _, _ = multipletests(p_values, alpha=alpha, method='fdr_bh')
 
@@ -124,22 +114,6 @@ freq_axis = rfftfreq(N-1, d = 1/Hz)
 plt.figure()
 plt.plot(freq_axis,np.mean(fourier_roi[:,1:normalize],axis=0), color = 'g')
 plt.fill_between(freq_axis,y1=(np.mean(fourier_roi[:,1:normalize],axis=0) + sem(fourier_roi[:,1:normalize],axis=0)),y2=(np.mean(fourier_roi[:,1:normalize],axis=0) - sem(fourier_roi[:,1:normalize],axis=0)),color='g',alpha=0.3)
-plt.xlabel('Frequency (Hz)',fontsize =24)
-plt.ylabel('Amplitude',fontsize =24)
-plt.locator_params(axis='y', nbins=1)
-plt.xticks(fontsize =20)
-plt.yticks(fontsize =20)
-plt.ylim(0,0.15)
-plt.tight_layout()
-
-
-## When activity is shuffled
-N = fourier_roi_shuffled.shape[1]
-normalize = int(N/2)+1 
-freq_axis = rfftfreq(N-1, d = 1/Hz)
-plt.figure()
-plt.plot(freq_axis,np.mean(fourier_roi_shuffled[:,1:normalize],axis=0), color = 'm')
-plt.fill_between(freq_axis,y1=(np.mean(fourier_roi_shuffled[:,1:normalize],axis=0) + sem(fourier_roi_shuffled[:,1:normalize],axis=0)),y2=(np.mean(fourier_roi_shuffled[:,1:normalize],axis=0) - sem(fourier_roi_shuffled[:,1:normalize],axis=0)),color='m',alpha=0.3)
 plt.xlabel('Frequency (Hz)',fontsize =24)
 plt.ylabel('Amplitude',fontsize =24)
 plt.locator_params(axis='y', nbins=1)
