@@ -919,6 +919,41 @@ def plot_power_ROIs_all(ps,ps_shuffled,ps_off, path,title):
         plt.savefig(path + 'absolute_power'+ title +'.pdf', transparent = True) 
 
 
+def plot_power_ROIs_all_no_shuffle(ps,ps_off, path,title):
+    """
+    Description
+    ----------
+    This function plots the absolute at 27-28Hz for the three groups (stim on, stim off and shuffled activity)
+    ----------
+
+    Parameters
+    ----------
+    ps (nd.array) 
+        array containing the absolute power at 27-28Hz for all ROIs when stimulus is on
+    ps_off (nd.array) 
+        array containing the absolute power at 27-28Hz for all ROIs when stimulus is off
+     path (str)
+        Path to folder where to save the plots. If set to None, plots won't be saved.
+    ---------- 
+
+    """  
+    plt.figure(figsize=(11, 6))
+    plt.plot(np.random.normal(0.25,0.025, size = len(ps)),ps,'g.',alpha = 0.3)#+'.'
+    plt.plot(np.random.normal(0.6,0.025, size = len(ps_off)),ps_off,'k.',alpha = 0.3)#+'.'
+
+    plt.bar([0.25],np.mean(ps),yerr = np.std(ps),capsize = 5, color = 'white',edgecolor = 'g', width = 0.1)
+    plt.bar([0.6],np.mean(ps_off),yerr = np.std(ps_off),capsize = 5, color = 'white',edgecolor = 'k', width = 0.1)
+
+    plt.xticks([])
+    plt.yticks(fontsize = 22)
+    plt.ylabel('Absolute power at [27-28] Hz', fontsize = 20)
+    plt.locator_params(axis='y', nbins=3)
+    plt.ylim(0,0.9)
+    plt.tight_layout()
+    
+    if path != None:
+        plt.savefig(path + 'absolute_power'+ title +'.pdf', transparent = True) 
+
 
 
 
