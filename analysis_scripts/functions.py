@@ -1179,6 +1179,32 @@ def crosscorr_sort_corr(dffs,stimulus,threshold_test,cutoff,frame_rate):
     return(n_roi, corr_coeff)  
 
 
+def assign_depths(n_rois: int, slice_depths: np.ndarray) -> np.ndarray:
+    """
+    Assigns depths to each ROI given the total number of ROIs and slice depths.
 
+    Parameters
+    ----------
+    n_rois : int
+        Total number of ROIs (number of rows in your 2D array).
+    slice_depths : np.ndarray
+        1D array of shape (n_slices,) containing the depth for each slice.
+
+    Returns
+    -------
+    roi_depths : np.ndarray
+        1D array of shape (n_rois,) where each entry is the depth of the slice
+        corresponding to that ROI.
+    """
+    n_slices = len(slice_depths)
+    rois_per_slice = n_rois // n_slices  # assumes equal number of ROIs per slice
+    
+    if n_rois % n_slices != 0:
+        raise ValueError("Number of ROIs is not evenly divisible by number of slices.")
+
+    # Repeat each slice depth rois_per_slice times
+    roi_depths = np.repeat(slice_depths, rois_per_slice)
+    
+    return roi_depths
 
 
