@@ -1,7 +1,5 @@
 
-%directory='D:\WayanData\test I2C';
-%directory='D:\WayanData\test I2C\a1_r11';
-directory='D:\AlbertData\I2C';
+directory='D:\WayanData\test I2C';
 cd(directory);
 TiffImagesList= dir('*.tif');
 
@@ -39,15 +37,7 @@ while i<length(TiffImagesList) % Loop through the files
     i=i+1;
 end   
 
-% T = table(Time,Frames);
-% filename = 'Y:\Wayan\Lightbead\Flies\Method paper\04192024\I2C_frames\a1_r2\a1_r2.xlsx';
-% writetable(T,filename)
 
-%plot(Time,Frames)
-
-% directory = '\\cup\murthy\Wayan\Lightbead\Flies\Method paper\04192024\I2C_frames\a1_r6\'
-% cd(directory) 
-%fileID = fopen('\\cup\murthy\Wayan\Lightbead\Flies\Method paper\06192024\I2C_frames\a1_r1\a1_r1.txt','w');
-fileID = fopen('\\cup\murthy\Albert\Multisensory Data\082824_audioLR_a2\I2C\082824_a2_r4.txt','w');
+fileID = fopen('\\cup\murthy\Wayan\Lightbead\Flies\Method paper\06192024\I2C_frames\a1_r1\a1_r1.txt','w');
 fprintf(fileID,'%6.4f %12.2f\n',[Time;Frames]);
 fclose(fileID);
