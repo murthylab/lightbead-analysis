@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This scripts take the aligned data as inputs, extract auditory ROIs and stores them for future analyses in fig 3.
-It generates panel in Figure 3
+It generates panel in Figure 4
 """
 
 #%% Imports

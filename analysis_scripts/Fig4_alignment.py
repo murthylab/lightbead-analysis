@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This script takes the output of the signal extraction pipeline, the sound server files, and  I2C information to align the data.
-The aligned data is then saved for future analyses in Fig 3
+The aligned data is then saved for future analyses in Fig 4
 """
 #%% imports 
 
