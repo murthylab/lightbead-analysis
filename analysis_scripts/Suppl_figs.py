@@ -54,7 +54,7 @@ list_dic = ['GCaMP6f_04032024_a2_r1.pkl']
 data = pd.read_pickle(path_dico_LB + list_dic[0])
 time_audio_LB = data['time_audio_aligned']
 pulse_song = data['pulse_song']
-sine_song = data['sine_song']
+
        
 #TODO CHANGE THIS TO THE DESIRED FOLDER containing for 2p
 path_dico = 'D:/Wayan/LightBead/method paper/dico data/zscored/RigE/supervoxels_1000/'
