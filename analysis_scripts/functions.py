@@ -1,14 +1,5 @@
 # -*- coding: utf-8 -*-
-"""
-Created on Tue Jul  1 12:51:13 2025
 
-@author: wayan
-"""
-
-
-####################
-# Import 
-####################
 
 import numpy as np
 
@@ -32,7 +23,7 @@ def create_stim(dffs, start_block_seconds,end_block_seconds ,frame_rate, t_i2c=0
     """
     Description
     ----------
-    This function creates a continuous version of the stimulus (array of 0 or 1) with the same shape as the calcium trace for Figure 2,S3,S4
+    This function creates a continuous version of the stimulus (array of 0 or 1) with the same shape as the activity
     ----------
 
     Parameters
@@ -44,7 +35,7 @@ def create_stim(dffs, start_block_seconds,end_block_seconds ,frame_rate, t_i2c=0
     end_block_seconds (np.ndarray)
         array containing the end of each block of stimulus in seconds
     t_i2c (float)
-        The first time point received by I2C. Set to 0 is data is already aligned
+        The first time point received by I2C. Set to 0 if data is already aligned
     frame_rate (float)
         frame rate of the scope
     ----------
@@ -56,7 +47,6 @@ def create_stim(dffs, start_block_seconds,end_block_seconds ,frame_rate, t_i2c=0
     ----------   
     
     """
-    
     # Get index of start and end
     s = (start_block_seconds)*frame_rate  
     e = (end_block_seconds )*frame_rate
@@ -79,7 +69,7 @@ def create_stim_train(dffs, start_block_seconds,end_block_seconds ,frame_rate, t
     """
     Description
     ----------
-    This function creates a continuous version of the stimulus (array of 0 or 1) with the same shape as the calcium trace for Figure 3
+    This function creates a continuous version of the stimulus (array of 0 or 1) with the same shape as the activity
     ----------
 
     Parameters
@@ -162,7 +152,6 @@ def crosscorr_sort(dffs, stimulus,cutoff,frame_rate,max_lag=0):
     dffs_std = dffs.std(axis=1, keepdims=True)
     dffs_normalized = (dffs - dffs_mean) / dffs_std
 
-    
     stimulus_normalized = (stimulus - stimulus.mean()) / stimulus.std()
     
     # define index cutoff
@@ -238,7 +227,6 @@ def truncate_colormap(cmap, minval=0.0, maxval=1.0, n=100):
 
 
 
-
 def compute_mean_time_series_per_block_pair(dffs, time_activity, frame_rate, start_block_seconds, end_block_seconds, t_added, scope):
     """
     Description
@@ -276,11 +264,10 @@ def compute_mean_time_series_per_block_pair(dffs, time_activity, frame_rate, sta
     ----------   
     
     """   
-    
+
     n_blocks = len(start_block_seconds)
     assert n_blocks % 2 == 0, "Number of blocks must be even"
 
-    
     block_pair_traces = []
     block_pair_sem=[]
 
@@ -481,7 +468,6 @@ def fourier_mean_activity_interpolate(dffs,start_block_seconds,end_block_seconds
     ---------- 
     """    
     b = 1   # Index that keeps track of the stimulus blocks
-    HZ = [0.25,0.5,1,2,3,5]
     # Loop through each pair of stimulus blocks
     for k in range(6):
             # Grab first block
@@ -797,7 +783,7 @@ def fourier_and_peaks_mean(dffs,start_block_seconds,end_block_seconds,frame_rate
     """
     Description
     ----------
-    This function the absolute at27-28Hz and the fourier spectrum for each ROIs
+    This function computes the absolute power at 27-28Hz and the fourier spectrum for each ROIs
     ----------
 
     Parameters
@@ -924,7 +910,7 @@ def plot_power_ROIs_all_no_shuffle(ps,ps_off, path,title):
     """
     Description
     ----------
-    This function plots the absolute at 27-28Hz for the three groups (stim on, stim off and shuffled activity)
+    This function plots the absolute at 27-28Hz for the three groups (stim on, stim off)
     ----------
 
     Parameters
@@ -1099,22 +1085,15 @@ def peaks_fourier_ROI_combine(dffs,start_block_seconds,end_block_seconds,t_added
                i_max_peak = peaks[0][np.argmax(ff_mean[peaks[0]])]
                
                #second_highest_peak_index = peaks[0][np.argpartition(ff_mean[peaks[0]],-2)[-2]]
-               '''
-               third_highest_peak_index = peaks[0][np.argpartition(ff_mean[peaks[0]],-3)[-3]]
-               fourth_highest_peak_index = peaks[0][np.argpartition(ff_mean[peaks[0]],-4)[-4]]
-               fifth_highest_peak_index = peaks[0][np.argpartition(ff_mean[peaks[0]],-5)[-5]]
-               '''
+               
                # Find the x value from that index
-               # x_max = (2*np.abs(rfft(data))/N)[i_max_peak]
                x_max = rfftfreq(N_target, d = 1/Hz)[i_max_peak]
 
-               #freq_run_mean.append(x_max)
+
                peak_freq[k,roi] = x_max
-               if top_peaks == 2:
-                   peak_freq[k,roi+dffs.shape[0]] = rfftfreq(N_target, d = 1/Hz) [second_highest_peak_index]     
-               #peak_freq[k,roi+2*sorter.shape[0]] = rfftfreq(N, d = 1/Hz_target) [third_highest_peak_index]
-               #peak_freq[k,roi+3*sorter.shape[0]] = rfftfreq(N, d = 1/Hz_target) [fourth_highest_peak_index]
-               #peak_freq[k,roi+4*sorter.shape[0]] = rfftfreq(N, d = 1/Hz_target) [fifth_highest_peak_index]
+               #if top_peaks == 2:
+                #   peak_freq[k,roi+dffs.shape[0]] = rfftfreq(N_target, d = 1/Hz) [second_highest_peak_index]     
+
             
             b=b+2  # move to next pair
 
@@ -1180,7 +1159,7 @@ def crosscorr_sort_corr(dffs,stimulus,threshold_test,cutoff,frame_rate):
     return(n_roi, corr_coeff)  
 
 
-def assign_depths(n_rois: int, slice_depths: np.ndarray) -> np.ndarray:
+def assign_depths(n_rois: int, slice_depths: np.ndarray):
     """
     Assigns depths to each ROI given the total number of ROIs and slice depths.
 
@@ -1215,24 +1194,21 @@ def plot_distribution_peaks_fourier_ROIs(freq_block,scope, color, path):
     # define bins
     if scope == 'LB':
         bins=np.arange(0,14.040,0.40)
-        #bins=np.arange(0,14.010,0.10)
         xlim = 14
     if scope == '2p':
-        bins = np.arange(0,1.1,0.08)#0.03133
-        #bins = np.linspace(0,1.1,np.arange(0,14.040,0.40).shape[0])
+        bins = np.arange(0,1.1,0.08)
         xlim = 1.1
     # Plot histogram
     for k in range(len(freq_block)):   
         plt.figure()
-        plt.hist(freq_block[k],  bins=bins, color = color)#, bins=[0, 0.4, 0.8, 1.2, 1.6,2,2.4,2.8,3.2,3.6,4,4.4,4.8,5.2,5.6]
-        #plt.title(HZ[k])
+        plt.hist(freq_block[k],  bins=bins, color = color)
         plt.xticks(fontsize = 22)
         plt.yticks(fontsize = 22)
         plt.xlabel('Frequency (Hz)', fontsize = 24)
         plt.ylabel('Count', fontsize = 24)
         plt.xlim(0,xlim)
         plt.tight_layout()
-        
+
 
         if path != None:
             plt.savefig(path + 'hist_fourier_peaks_' + str(HZ[k]) + '_' + scope + '.pdf', transparent = True)
@@ -1259,7 +1235,6 @@ def circular_shift_null_corr_prestandardized(
     r_null : (n_rois, n_shuffles)  correlations (one column per shift)
     shifts : (n_shuffles,)         the shift used for each column (np.int64)
     """
-    # --- inputs ---
     X = np.asarray(dffs_z, dtype=dtype, order="C")
     s = np.asarray(stim_z, dtype=dtype).reshape(-1)
 
@@ -1267,30 +1242,28 @@ def circular_shift_null_corr_prestandardized(
     if s.shape[0] != T:
         raise ValueError("stim_z length must equal number of columns in dffs_z")
 
-    # --- unit-L2 normalize once (already mean-zero) ---
     Xnorm = np.linalg.norm(X, axis=1, keepdims=True).astype(dtype)
     Xnorm[Xnorm == 0] = 1.0
-    Xu = X / Xnorm                         # (n_rois, T)
+    Xu = X / Xnorm                        
 
     s_norm = float(np.linalg.norm(s))
     if s_norm == 0:
-        # degenerate stimulus: all correlations are zero
+        
         return np.zeros((n_rois, n_shuffles), dtype=dtype), np.zeros(n_shuffles, dtype=np.int64)
-    s_u = s / s_norm                       # (T,)
+    s_u = s / s_norm                      
 
-    # --- decide shifts ---
+
     if shifts is not None:
         shifts = np.asarray(shifts, dtype=np.int64).ravel()
         if shifts.size != n_shuffles:
             raise ValueError("len(shifts) must equal n_shuffles.")
-        # bring into [0, T)
+
         shifts %= T
     else:
         rng = np.random.default_rng(seed)
         if exclude_lags <= 0:
             shifts = rng.integers(0, T, size=n_shuffles, endpoint=False, dtype=np.int64)
         else:
-            # disallow shifts in [-exclude_lags, +exclude_lags] modulo T
             mask = np.ones(T, dtype=bool)
             mask[:exclude_lags+1] = False
             if exclude_lags > 0:
@@ -1300,17 +1273,16 @@ def circular_shift_null_corr_prestandardized(
                 raise ValueError("Exclusion window too large: no shifts remain.")
             shifts = rng.choice(allowed, size=n_shuffles, replace=True)
 
-    # --- allocate output ---
     r_null = np.empty((n_rois, n_shuffles), dtype=dtype)
 
-    # --- batched matmul core ---
-    t = np.arange(T, dtype=np.int64)[:, None]   # (T,1)
+
+    t = np.arange(T, dtype=np.int64)[:, None]   
     for start in range(0, n_shuffles, batch_size):
         end = min(start + batch_size, n_shuffles)
-        k = shifts[start:end]                   # (B,)
-        idx = (t - k[None, :]) % T              # (T, B)  column b = rolled by k[b]
-        S_batch = s_u[idx]                      # (T, B), unit-L2 columns
-        r_null[:, start:end] = Xu @ S_batch     # (n_rois, B)
+        k = shifts[start:end]                   
+        idx = (t - k[None, :]) % T              
+        S_batch = s_u[idx]                      
+        r_null[:, start:end] = Xu @ S_batch    
 
     return r_null, shifts            
             
@@ -1330,7 +1302,6 @@ def allowed_circ_shifts(T, fs, period_sec, E_sec):
            else:
                allowed[:hi+1] = False
                allowed[lo:] = False
-   # ensure at least one shift remains
    if not np.any(allowed):
        raise ValueError("Exclusion too wide—no shifts left.")
    return np.flatnonzero(allowed)
@@ -1362,7 +1333,7 @@ def block_permute_null_corr_prestandardized(
     if s.shape[0] != T:
         raise ValueError("stim_z length must equal number of columns in dffs_z")
 
-    # Unit-L2 normalize (inputs are already mean-zero)
+
     Xnorm = np.linalg.norm(X, axis=1, keepdims=True).astype(dtype)
     Xnorm[Xnorm == 0] = 1.0
     Xu = X / Xnorm
@@ -1372,7 +1343,7 @@ def block_permute_null_corr_prestandardized(
         return np.zeros((n_rois, n_shuffles), dtype=dtype), np.empty((n_shuffles, 0), dtype=np.int64)
     s_u = s / s_norm
 
-    # Build block layout
+
     block_len = int(round(block_sec * fs))
     if block_len <= 0:
         raise ValueError("block_sec too small for the given fs")
@@ -1383,16 +1354,16 @@ def block_permute_null_corr_prestandardized(
     r_null = np.empty((n_rois, n_shuffles), dtype=dtype)
     perms_used = np.empty((n_shuffles, n_blocks), dtype=np.int64)
 
-    # Pre-allocate index matrix for the stimulus in this batch: **T × B** (fixed length)
+
     for start in range(0, n_shuffles, batch_size):
         end = min(start + batch_size, n_shuffles)
         B = end - start
 
-        # Draw block permutations (avoid identity if requested and possible)
+        
         perms = np.empty((B, n_blocks), dtype=np.int64)
         for b in range(B):
             if forbid_identity_perm and n_blocks == 1:
-                # Only one block -> identity is unavoidable; allow it.
+                
                 perms[b] = np.array([0], dtype=np.int64)
             else:
                 while True:
@@ -1401,28 +1372,28 @@ def block_permute_null_corr_prestandardized(
                         break
                 perms[b] = p
 
-        # Per-(shuffle, block) jitters
+       
         if jitter_within_block > 0:
             J = int(jitter_within_block)
             jit = rng.integers(-J, J + 1, size=(B, n_blocks), endpoint=True, dtype=np.int64)
         else:
             jit = np.zeros((B, n_blocks), dtype=np.int64)
 
-        # Assemble absolute indices for each permuted stimulus (column)
-        idx_batch = np.empty((T, B), dtype=np.int64)   # <-- FIX: allocate (T, B), not padded length
+        
+        idx_batch = np.empty((T, B), dtype=np.int64)   
         for b in range(B):
             cols = []
             for j in range(n_blocks):
                 col = BI[:, perms[b, j]]
                 if jitter_within_block != 0:
-                    col = np.roll(col, jit[b, j], axis=0)  # roll within the block
+                    col = np.roll(col, jit[b, j], axis=0) 
                 cols.append(col)
-            idx_b = np.concatenate(cols, axis=0)[:T]   # truncate padding back to T
-            idx_batch[:, b] = idx_b                    # shapes now match (T,)
+            idx_b = np.concatenate(cols, axis=0)[:T]  
+            idx_batch[:, b] = idx_b                    
 
-        # Gather permuted stimulus and correlate
-        S_batch = s_u[idx_batch]                       # (T, B)
-        r_null[:, start:end] = Xu @ S_batch            # (n_rois, B)
+       
+        S_batch = s_u[idx_batch]                       
+        r_null[:, start:end] = Xu @ S_batch            
         perms_used[start:end] = perms
 
     return r_null, perms_used
@@ -1472,12 +1443,11 @@ def permutation_pvals_one_sided(r_obs, r_null, alternative="greater"):
         raise ValueError("alternative must be 'greater' or 'less'.")
 
     if r_null.ndim == 1:
-        # Pooled null
         valid = ~np.isnan(r_null)
         N = int(valid.sum())
         if N == 0:
             return np.ones_like(r_obs)
-        rn = r_null[valid][None, :]  # (1, N)
+        rn = r_null[valid][None, :]  
         if alternative == "greater":
             counts = (rn >= r_obs[:, None]).sum(axis=1)
         else:
@@ -1488,17 +1458,16 @@ def permutation_pvals_one_sided(r_obs, r_null, alternative="greater"):
     elif r_null.ndim == 2:
         if r_null.shape[0] != r_obs.shape[0]:
             raise ValueError("For per-ROI nulls, r_null must have shape (n_rois, n_perm).")
-        valid = ~np.isnan(r_null)                       # (n_rois, n_perm)
-        N = valid.sum(axis=1).astype(np.int64)          # (n_rois,)
+        valid = ~np.isnan(r_null)                       
+        N = valid.sum(axis=1).astype(np.int64)          
 
-        # Broadcast compare with care about NaNs
         if alternative == "greater":
             ge = (r_null >= r_obs[:, None]) & valid
         else:
             ge = (r_null <= r_obs[:, None]) & valid
         counts = ge.sum(axis=1)
 
-        # Avoid division by zero (rows with all-NaN nulls → p=1)
+    
         denom = N + 1.0
         denom[denom == 0] = np.inf
         pvals = (1.0 + counts) / denom
