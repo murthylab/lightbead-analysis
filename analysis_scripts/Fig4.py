@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This script generates the panels E-J in Figure 3
+This script generates the panels E-J in Figure 4
 """
 
 #%% Imports
