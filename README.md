@@ -7,7 +7,7 @@ For the signal extraction pipeline you will need ANTsPy (https://github.com/ANTs
 For visualizing ROIs on slices you will need the packages included in roi_plotting_requirements.txt.
 
 # Signal extraction pipeline
-To extract calcium activity from ROIs you need to follow these steps:
+To run the signal extraction pipeline you need to follow these steps:
 1) Run Sliding_window.m on raw TIFF files to have the data in the right ordering
 2) Run batch_tiff_to_dff_mean_brain_RigE.sh to create a mean brain
 3) Run batch_tiff_to_dff_mc_RigE.sh to compute motion correction
