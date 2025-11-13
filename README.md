@@ -1,5 +1,3 @@
-# Documentation in progress
-
 Data analysis for Gauthey et al. 2025 [1]. The data can be found at ......
 This repository contains the code to reproduce the figures in [1] and a signal extraction pipeline.
 
