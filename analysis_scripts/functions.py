@@ -21,6 +21,7 @@ import scipy.fft
 from scipy.signal import find_peaks
 import matplotlib
 from scipy.interpolate import interp1d
+from typing import Optional, Tuple
 
 matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
@@ -1208,3 +1209,302 @@ def assign_depths(n_rois: int, slice_depths: np.ndarray) -> np.ndarray:
     return roi_depths
 
 
+def plot_distribution_peaks_fourier_ROIs(freq_block,scope, color, path):
+    
+    HZ = [0.25,0.5,1,2,3,5]
+    # define bins
+    if scope == 'LB':
+        bins=np.arange(0,14.040,0.40)
+        #bins=np.arange(0,14.010,0.10)
+        xlim = 14
+    if scope == '2p':
+        bins = np.arange(0,1.1,0.08)#0.03133
+        #bins = np.linspace(0,1.1,np.arange(0,14.040,0.40).shape[0])
+        xlim = 1.1
+    # Plot histogram
+    for k in range(len(freq_block)):   
+        plt.figure()
+        plt.hist(freq_block[k],  bins=bins, color = color)#, bins=[0, 0.4, 0.8, 1.2, 1.6,2,2.4,2.8,3.2,3.6,4,4.4,4.8,5.2,5.6]
+        #plt.title(HZ[k])
+        plt.xticks(fontsize = 22)
+        plt.yticks(fontsize = 22)
+        plt.xlabel('Frequency (Hz)', fontsize = 24)
+        plt.ylabel('Count', fontsize = 24)
+        plt.xlim(0,xlim)
+        plt.tight_layout()
+        
+
+        if path != None:
+            plt.savefig(path + 'hist_fourier_peaks_' + str(HZ[k]) + '_' + scope + '.pdf', transparent = True)
+            
+            
+def circular_shift_null_corr_prestandardized(
+    dffs_z: np.ndarray,           # (n_rois, T) mean-zero (z-scored) ROI traces
+    stim_z: np.ndarray,           # (T,)       mean-zero (z-scored) stimulus
+    n_shuffles: int,
+    exclude_lags: int = 0,        # ignored when 'shifts' is provided
+    seed: Optional[int] = None,
+    batch_size: int = 256,        # shifts per batch (tune for RAM/BLAS)
+    dtype: np.dtype = np.float32,
+    shifts: Optional[np.ndarray] = None,  # (n_shuffles,) specific circular shifts to use
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Compute Pearson correlations between each ROI and circularly-shifted stimulus versions.
+
+    If 'shifts' is provided (ints in [0, T)), it is used directly and 'exclude_lags' is ignored.
+    Otherwise, draws 'n_shuffles' random shifts, optionally excluding small lags.
+
+    Returns
+    -------
+    r_null : (n_rois, n_shuffles)  correlations (one column per shift)
+    shifts : (n_shuffles,)         the shift used for each column (np.int64)
+    """
+    # --- inputs ---
+    X = np.asarray(dffs_z, dtype=dtype, order="C")
+    s = np.asarray(stim_z, dtype=dtype).reshape(-1)
+
+    n_rois, T = X.shape
+    if s.shape[0] != T:
+        raise ValueError("stim_z length must equal number of columns in dffs_z")
+
+    # --- unit-L2 normalize once (already mean-zero) ---
+    Xnorm = np.linalg.norm(X, axis=1, keepdims=True).astype(dtype)
+    Xnorm[Xnorm == 0] = 1.0
+    Xu = X / Xnorm                         # (n_rois, T)
+
+    s_norm = float(np.linalg.norm(s))
+    if s_norm == 0:
+        # degenerate stimulus: all correlations are zero
+        return np.zeros((n_rois, n_shuffles), dtype=dtype), np.zeros(n_shuffles, dtype=np.int64)
+    s_u = s / s_norm                       # (T,)
+
+    # --- decide shifts ---
+    if shifts is not None:
+        shifts = np.asarray(shifts, dtype=np.int64).ravel()
+        if shifts.size != n_shuffles:
+            raise ValueError("len(shifts) must equal n_shuffles.")
+        # bring into [0, T)
+        shifts %= T
+    else:
+        rng = np.random.default_rng(seed)
+        if exclude_lags <= 0:
+            shifts = rng.integers(0, T, size=n_shuffles, endpoint=False, dtype=np.int64)
+        else:
+            # disallow shifts in [-exclude_lags, +exclude_lags] modulo T
+            mask = np.ones(T, dtype=bool)
+            mask[:exclude_lags+1] = False
+            if exclude_lags > 0:
+                mask[T-exclude_lags:] = False
+            allowed = np.nonzero(mask)[0].astype(np.int64)
+            if allowed.size == 0:
+                raise ValueError("Exclusion window too large: no shifts remain.")
+            shifts = rng.choice(allowed, size=n_shuffles, replace=True)
+
+    # --- allocate output ---
+    r_null = np.empty((n_rois, n_shuffles), dtype=dtype)
+
+    # --- batched matmul core ---
+    t = np.arange(T, dtype=np.int64)[:, None]   # (T,1)
+    for start in range(0, n_shuffles, batch_size):
+        end = min(start + batch_size, n_shuffles)
+        k = shifts[start:end]                   # (B,)
+        idx = (t - k[None, :]) % T              # (T, B)  column b = rolled by k[b]
+        S_batch = s_u[idx]                      # (T, B), unit-L2 columns
+        r_null[:, start:end] = Xu @ S_batch     # (n_rois, B)
+
+    return r_null, shifts            
+            
+            
+def allowed_circ_shifts(T, fs, period_sec, E_sec):
+   period = int(round(period_sec * fs))
+   E = int(round(E_sec * fs))
+   allowed = np.ones(T, dtype=bool)
+   if period > 0:
+       n_mult = int(np.ceil(T / period)) + 1
+       for k in range(n_mult):
+           center = (k * period) % T
+           lo = (center - E) % T
+           hi = (center + E) % T
+           if lo <= hi:
+               allowed[lo:hi+1] = False
+           else:
+               allowed[:hi+1] = False
+               allowed[lo:] = False
+   # ensure at least one shift remains
+   if not np.any(allowed):
+       raise ValueError("Exclusion too wide—no shifts left.")
+   return np.flatnonzero(allowed)
+
+
+def block_permute_null_corr_prestandardized(
+    dffs_z: np.ndarray,          # (n_rois, T), mean-zero (z-scored)
+    stim_z: np.ndarray,          # (T,), mean-zero (z-scored)
+    fs: float,                   # Hz
+    n_shuffles: int,
+    block_sec: float = 10.0,     # seconds
+    jitter_within_block: int = 0,# ±samples to circularly roll inside each block
+    seed: Optional[int] = None,
+    batch_size: int = 128,
+    dtype: np.dtype = np.float32,
+    forbid_identity_perm: bool = True,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Permute stimulus in contiguous blocks (optionally with within-block jitter) and
+    compute Pearson r for each ROI vs each permuted stimulus.
+    Returns:
+      r_null : (n_rois, n_shuffles)
+      perms  : (n_shuffles, n_blocks)
+    """
+    X = np.asarray(dffs_z, dtype=dtype, order="C")
+    s = np.asarray(stim_z,  dtype=dtype).reshape(-1)
+
+    n_rois, T = X.shape
+    if s.shape[0] != T:
+        raise ValueError("stim_z length must equal number of columns in dffs_z")
+
+    # Unit-L2 normalize (inputs are already mean-zero)
+    Xnorm = np.linalg.norm(X, axis=1, keepdims=True).astype(dtype)
+    Xnorm[Xnorm == 0] = 1.0
+    Xu = X / Xnorm
+
+    s_norm = float(np.linalg.norm(s))
+    if s_norm == 0:
+        return np.zeros((n_rois, n_shuffles), dtype=dtype), np.empty((n_shuffles, 0), dtype=np.int64)
+    s_u = s / s_norm
+
+    # Build block layout
+    block_len = int(round(block_sec * fs))
+    if block_len <= 0:
+        raise ValueError("block_sec too small for the given fs")
+    BI = _make_block_indices(T, block_len)      # (block_len, n_blocks)
+    block_len_eff, n_blocks = BI.shape
+
+    rng = np.random.default_rng(seed)
+    r_null = np.empty((n_rois, n_shuffles), dtype=dtype)
+    perms_used = np.empty((n_shuffles, n_blocks), dtype=np.int64)
+
+    # Pre-allocate index matrix for the stimulus in this batch: **T × B** (fixed length)
+    for start in range(0, n_shuffles, batch_size):
+        end = min(start + batch_size, n_shuffles)
+        B = end - start
+
+        # Draw block permutations (avoid identity if requested and possible)
+        perms = np.empty((B, n_blocks), dtype=np.int64)
+        for b in range(B):
+            if forbid_identity_perm and n_blocks == 1:
+                # Only one block -> identity is unavoidable; allow it.
+                perms[b] = np.array([0], dtype=np.int64)
+            else:
+                while True:
+                    p = rng.permutation(n_blocks)
+                    if not forbid_identity_perm or np.any(p != np.arange(n_blocks)):
+                        break
+                perms[b] = p
+
+        # Per-(shuffle, block) jitters
+        if jitter_within_block > 0:
+            J = int(jitter_within_block)
+            jit = rng.integers(-J, J + 1, size=(B, n_blocks), endpoint=True, dtype=np.int64)
+        else:
+            jit = np.zeros((B, n_blocks), dtype=np.int64)
+
+        # Assemble absolute indices for each permuted stimulus (column)
+        idx_batch = np.empty((T, B), dtype=np.int64)   # <-- FIX: allocate (T, B), not padded length
+        for b in range(B):
+            cols = []
+            for j in range(n_blocks):
+                col = BI[:, perms[b, j]]
+                if jitter_within_block != 0:
+                    col = np.roll(col, jit[b, j], axis=0)  # roll within the block
+                cols.append(col)
+            idx_b = np.concatenate(cols, axis=0)[:T]   # truncate padding back to T
+            idx_batch[:, b] = idx_b                    # shapes now match (T,)
+
+        # Gather permuted stimulus and correlate
+        S_batch = s_u[idx_batch]                       # (T, B)
+        r_null[:, start:end] = Xu @ S_batch            # (n_rois, B)
+        perms_used[start:end] = perms
+
+    return r_null, perms_used
+
+
+def _make_block_indices(T: int, block_len: int) -> np.ndarray:
+    """
+    Return BI of shape (block_len, n_blocks) with absolute indices per block.
+    Pads the final block by repeating its last index so each column has block_len rows.
+    """
+    if block_len <= 0:
+        raise ValueError("block_len must be positive")
+    n_blocks = int(np.ceil(T / block_len))
+    pad = n_blocks * block_len - T
+    idx = np.arange(T, dtype=np.int64)
+    if pad > 0:
+        idx = np.concatenate([idx, np.full(pad, idx[-1], dtype=np.int64)])
+    return idx.reshape(n_blocks, block_len).T  # (block_len, n_blocks)
+
+
+def permutation_pvals_one_sided(r_obs, r_null, alternative="greater"):
+    """
+    One-sided permutation p-values with finite-sample correction.
+
+    p_i = (1 + #{ r_null >= r_obs_i }) / (N_i + 1)      if alternative == "greater"
+    p_i = (1 + #{ r_null <= r_obs_i }) / (N_i + 1)      if alternative == "less"
+
+    Parameters
+    ----------
+    r_obs : array-like, shape (n_rois,)
+        Observed statistics (e.g., correlations) per ROI.
+    r_null : array-like, shape (n_rois, n_perm) or (n_perm,)
+        Null statistics from permutations. If 2D, each row is that ROI's null.
+        If 1D, a pooled null used for all ROIs.
+    alternative : {"greater","less"}, default "greater"
+        Direction of the one-sided test.
+
+    Returns
+    -------
+    pvals : ndarray, shape (n_rois,)
+        One-sided permutation p-values.
+    """
+    r_obs = np.asarray(r_obs, dtype=np.float64).reshape(-1)
+    r_null = np.asarray(r_null, dtype=np.float64)
+
+    if alternative not in ("greater", "less"):
+        raise ValueError("alternative must be 'greater' or 'less'.")
+
+    if r_null.ndim == 1:
+        # Pooled null
+        valid = ~np.isnan(r_null)
+        N = int(valid.sum())
+        if N == 0:
+            return np.ones_like(r_obs)
+        rn = r_null[valid][None, :]  # (1, N)
+        if alternative == "greater":
+            counts = (rn >= r_obs[:, None]).sum(axis=1)
+        else:
+            counts = (rn <= r_obs[:, None]).sum(axis=1)
+        pvals = (1.0 + counts) / (N + 1.0)
+        return pvals
+
+    elif r_null.ndim == 2:
+        if r_null.shape[0] != r_obs.shape[0]:
+            raise ValueError("For per-ROI nulls, r_null must have shape (n_rois, n_perm).")
+        valid = ~np.isnan(r_null)                       # (n_rois, n_perm)
+        N = valid.sum(axis=1).astype(np.int64)          # (n_rois,)
+
+        # Broadcast compare with care about NaNs
+        if alternative == "greater":
+            ge = (r_null >= r_obs[:, None]) & valid
+        else:
+            ge = (r_null <= r_obs[:, None]) & valid
+        counts = ge.sum(axis=1)
+
+        # Avoid division by zero (rows with all-NaN nulls → p=1)
+        denom = N + 1.0
+        denom[denom == 0] = np.inf
+        pvals = (1.0 + counts) / denom
+        pvals[np.isinf(denom)] = 1.0
+        return pvals
+
+    else:
+        raise ValueError("r_null must be 1D (pooled) or 2D (per-ROI).")
+      

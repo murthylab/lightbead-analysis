@@ -44,7 +44,7 @@ fr_2p = 1/Hz_2p
 time_activity_2p  = np.arange(fr_2p,(dffs_2p.shape[1]+fr_2p)*fr_2p,fr_2p) 
 
 #TODO CHANGE THIS TO THE DESIRED FOLDER contaning the aligned LBM data
-path_dico = 'D:/Wayan/LightBead/method paper/dico data/zscored/supervoxels_2000/'      #supervoxels_500/'
+path_dico = 'D:/Wayan/LightBead/method paper/dico data/zscored/supervoxels_2000/'      
 list_dic = ['GCaMP6f_04032024_a2_r1.pkl']
 data = pd.read_pickle(path_dico + list_dic[0])
 time_audio_LB = data['time_audio_aligned']
