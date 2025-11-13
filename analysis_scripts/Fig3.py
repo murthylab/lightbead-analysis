@@ -1,21 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-This script generates the panels E-J in Figure 3
+This script generates all panels for Fig.3
 """
 
 #%% Imports
 
-import pandas as pd
-import numpy as np 
-import matplotlib.pyplot as plt
+import pandas as pd 
 import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
 import Functions as f
-from scipy.signal import find_peaks
-from scipy.fft import rfftfreq
+from scipy.stats import zscore
 from scipy.io import loadmat
-from scipy.stats import sem
-from scipy.stats import ttest_ind  
-from statsmodels.stats.multitest import multipletests
 
 matplotlib.rcParams['axes.spines.right'] = False
 matplotlib.rcParams['axes.spines.top'] = False
@@ -24,261 +20,206 @@ matplotlib.rcParams['pdf.fonttype'] = 42
 matplotlib.rcParams['ps.fonttype'] = 42
 
 
-
-#%% Import data
+#%% Load data and define variables
 
 #############################################################################
 # To reproduce figures: 
 # GO THROUGH THE TODO AND FOLLOW THE INSTRUCTIONS THERE
 #############################################################################
 
-#TODO CHANGE THIS TO THE DESIRED FOLDER containing extracted data
-path = 'D:/Wayan/LightBead/method paper/clustering/zscored/60Hz/1000/New trial/' 
-data_LB = pd.read_pickle(path + 'dffs_audio_60hz_abs30_pos_corr_facing_U_flip_rot180_row'+'.pkl') 
+#TODO CHANGE THIS TO THE DESIRED FOLDER contaning the data with audio correlated ROIs
+path = 'D:/Wayan/LightBead/method paper/clustering/zscored/supervoxels 2000/' 
+data_LB = pd.read_pickle(path + 'dffs_audio_LB_corr_top05_all'+'.pkl') 
+data_2p = pd.read_pickle(path + 'dffs_audio_2p_corr_top05_all'+'.pkl')  
 
-dffs = data_LB['audio_correlated']
-time_roi = data_LB['time_roi']
+dffs_LB = data_LB['audio_correlated'][:,1:]
+dffs_2p = data_2p['audio_correlated'][:,1:]
 
-#TODO CHANGE THIS TO THE DESIRED FOLDER containing aligned data
-path_dico = 'D:/Wayan/LightBead/method paper/dico data/'
-dic = ['GCaMP8m_06202024_a1_r2.pkl']
-data = pd.read_pickle(path_dico + dic[0])
-pulse_song = data['pulse_song'][0]
-sine_song = data['sine_song'][0]
-time_audio = data['time_audio_aligned']
+Hz_LB = 28.2893
+fr_LB = 1/Hz_LB 
+time_activity_LB = np.arange(fr_LB,(dffs_LB.shape[1]+fr_LB)*fr_LB,fr_LB) 
 
-#TODO CHANGE THIS TO THE DESIRED FOLDER containing the auditory stimulus
-audio_dir = "C:/Users/wayan.CHRISTAPNI/Documents/Labs/Murthy/LightBead/Code/audio stimuli/Method paper/"
-file = loadmat(audio_dir + '3min_pulse_train.mat')
-stim = file['stim']
+Hz_2p = 2.20337115787
+fr_2p = 1/Hz_2p
+time_activity_2p  = np.arange(fr_2p,(dffs_2p.shape[1]+fr_2p)*fr_2p,fr_2p) 
+
+#TODO CHANGE THIS TO THE DESIRED FOLDER contaning the aligned LBM data
+path_dico = 'D:/Wayan/LightBead/method paper/dico data/zscored/supervoxels_2000/'      
+list_dic = ['GCaMP6f_04032024_a2_r1.pkl']
+data = pd.read_pickle(path_dico + list_dic[0])
+time_audio_LB = data['time_audio_aligned']
+pulse_song = data['pulse_song']
+
+  
+#TODO CHANGE THIS TO THE DESIRED FOLDER contaning the aligned 2p data     
+path_dico = 'D:/Wayan/LightBead/method paper/dico data/zscored/RigE/supervoxels_1000/'
+list_dic = ['GCaMP6f_12132024_a2_r2.pkl']
+data = pd.read_pickle(path_dico + list_dic[0])
+time_audio_2p = data['time_audio_aligned']
+
+#TODO CHANGE THIS TO THE DESIRED FOLDER contaning the stimulus for plotting
+dropbox_dir = "C:/Users/wayan.CHRISTAPNI/Documents/Labs/Murthy/LightBead/Code/audio stimuli/Method paper/"
+audio_stim = loadmat(dropbox_dir + 'highspeed_pulse_2_WG_paper_forplotting.mat')
+time_audio_2p = audio_stim['stim_time'][0]
+pulse_song = audio_stim['pulse_song'][0]
 
 
 
-#%% Define variables
+start_block_seconds_LB = np.array([5,25,45,65,84,103,123,143,163,183,202.99894,222.99788,242.99788])
+end_block_seconds_LB = np.array([15,35,55,75,94,113,133,153,173,192.99894,212.99788,232.99788,252.99788])
+
+start_block_seconds_2p = np.array([5,25,45,65,84,103,123,143,163,183,202.99894,222.99788,242.99788])
+end_block_seconds_2p = np.array([15,35,55,75,94,113,133,153,173,192.99894,212.99788,232.99788,252.99788])
 
 
-### Define start and end of stimulus blocks
-start_block_seconds = np.array([5,25,45,55,65,75,85,95,105,115,125,135,145,155])
-end_block_seconds = np.array([15,35,47,57,67,77,87,97,107,117,127,137,147,157])
 
-# when stimulus is off
-start_block_seconds_off = np.array([1,19,39,49,59,69,79,89,99,109,119,129,139,149])
-end_block_seconds_off = np.array([3,21,41,51,61,71,81,91,101,111,121,131,141,151])
 
-Hz = 60.041
-frame_rate = 1/Hz
+#%% Plot heatmaps
 
-time_activity = np.arange(frame_rate,(dffs.shape[1]+frame_rate)*frame_rate,frame_rate) 
+## For LB
+to_plot_LB = np.flip(zscore(dffs_LB,axis = 1)[:,:7300],axis = 0)
 
-#%% Compute mean fourier spectrum and absolute power
+cmap_base = 'viridis' 
+vmin, vmax = -0.4,1.1  
+cmap = f.truncate_colormap(cmap_base, vmin, vmax)
 
-### shuffle activity within each blocks only
-shuffled_activity = f.shuffle_within_blocks(
-    dffs,
-    start_block_seconds,
-    end_block_seconds,
-    Hz,
-    seed=44
+plt.figure(figsize = (4.7,5.3)) #(4,5)
+im = plt.imshow(to_plot_LB, aspect = 'auto', vmin = -1, vmax = 1,cmap = cmap, extent = [0.035,258,0,1700])   
+plt.tight_layout()
+plt.colorbar(im)
+plt.yticks([])
+plt.xticks(color = 'k')
+plt.fill_between(time_audio_LB,y1=pulse_song+1725, y2=pulse_song +1745,where =pulse_song>0,color='r',alpha=1)
+plt.xlabel('Time (s)')
+plt.tight_layout()
+
+
+## for 2p
+to_plot_2p = np.flip(zscore(dffs_2p,axis = 1)[:,:569],axis = 0) 
+
+
+cmap_base = 'magma' #gnuplot
+vmin, vmax = 0.0, 0.50 # -0.6 , 0.5
+cmap = f.truncate_colormap(cmap_base, vmin, vmax)
+
+plt.figure(figsize = (4.7,5.3))
+im = plt.imshow(to_plot_2p, aspect = 'auto', vmin = -1, vmax = 1,cmap = cmap,extent = [0.45,258.18,0,950])   
+plt.tight_layout()
+plt.colorbar(im)
+plt.yticks([])
+plt.fill_between(time_audio_2p,y1=pulse_song+960, y2=pulse_song+975,where =pulse_song>0,color='r',alpha=1)
+plt.xlabel('Time (s)')
+plt.tight_layout()
+
+
+
+#%% Plot mean activity
+path = 'C:/Users/wayan.CHRISTAPNI/Princeton Dropbox/Wayan Gauthey/Princeton/Lightbead/Method paper/Figures/Panels/Figure 2/14012025/Revision round 1/'
+
+### For LBM
+mean_trace_per_pair_LB,sem_trace_per_pair_LB = f.compute_mean_time_series_per_block_pair(
+    dffs=zscore(dffs_LB,axis =1),
+    time_activity=time_activity_LB,
+    frame_rate=Hz_LB,
+    start_block_seconds=start_block_seconds_LB[1:],
+    end_block_seconds=end_block_seconds_LB[1:],
+    t_added = 2,
+    scope = 'LB'
 )
 
 
-ps_mean , fourier_roi= f.fourier_and_peaks_mean(dffs,start_block_seconds,end_block_seconds,Hz,time_activity,None)
-ps_mean = np.array(ps_mean).flatten()
-
-ps_off_mean , fourier_roi_off= f.fourier_and_peaks_mean(dffs,start_block_seconds_off,end_block_seconds_off,Hz,time_activity,None)
-ps_off_mean = np.array(ps_off_mean).flatten()
-
-
-#################################
-# Plot absolute power
-#################################
-
-f.plot_power_ROIs_all_no_shuffle(ps_mean,ps_off_mean, None,'all_no_shuffle') 
-
-##### Compute pvals abs power
-t_stat_13, p_val_13 = ttest_ind(ps_mean, ps_off_mean, equal_var = False)
-
-p_values = [ p_val_13]
-alpha = 0.05
-reject, pvals_corrected, _, _ = multipletests(p_values, alpha=alpha, method='fdr_bh')
-
-
-#################################
-# Plot mean Fourier spectrum
-#################################
-
-## When stim is on
-N = fourier_roi.shape[1]
-normalize = int(N/2)+1 
-freq_axis = rfftfreq(N-1, d = 1/Hz)
-plt.figure()
-plt.plot(freq_axis,np.mean(fourier_roi[:,1:normalize],axis=0), color = 'g')
-plt.fill_between(freq_axis,y1=(np.mean(fourier_roi[:,1:normalize],axis=0) + sem(fourier_roi[:,1:normalize],axis=0)),y2=(np.mean(fourier_roi[:,1:normalize],axis=0) - sem(fourier_roi[:,1:normalize],axis=0)),color='g',alpha=0.3)
-plt.xlabel('Frequency (Hz)',fontsize =24)
-plt.ylabel('Amplitude',fontsize =24)
-plt.locator_params(axis='y', nbins=1)
-plt.xticks(fontsize =20)
-plt.yticks(fontsize =20)
-plt.ylim(0,0.15)
-plt.tight_layout()
-
-
-## When stimulus is off
-N = fourier_roi_off.shape[1]
-normalize = int(N/2)+1 
-freq_axis = rfftfreq(N-1, d = 1/Hz)
-plt.figure()
-plt.plot(freq_axis,np.mean(fourier_roi_off[:,1:normalize],axis=0), color='k')
-plt.fill_between(freq_axis,y1=(np.mean(fourier_roi_off[:,1:normalize],axis=0) + sem(fourier_roi_off[:,1:normalize],axis=0)),y2=(np.mean(fourier_roi_off[:,1:normalize],axis=0) - sem(fourier_roi_off[:,1:normalize],axis=0)),color='k',alpha=0.3)
-plt.xlabel('Frequency (Hz)',fontsize =24)
-plt.ylabel('Amplitude',fontsize =24)
-plt.locator_params(axis='y', nbins=1)
-plt.xticks(fontsize =20)
-plt.yticks(fontsize =20)
-plt.ylim(0,0.15)
-plt.tight_layout()
-
-
-    
-#%% Compute Pulse triggered average    
-
-to_use = dffs
-t_to_use = time_roi
-
-### shuffle within each block only
-shuffled = f.shuffle_within_blocks(
-    dffs,
-    start_block_seconds,
-    end_block_seconds,
-    Hz,
-    seed=44
+mean_stim_traces_LB = f.extract_single_stimulus_per_block_pair(
+    stimulus=pulse_song,
+    time_audio=time_audio_LB,
+    frame_rate=100,
+    start_block_seconds=start_block_seconds_LB[1:],
+    end_block_seconds=end_block_seconds_LB[1:],
+    t_added = 2
 )
 
-to_use_shuffle = shuffled
+
+f.plot_calcium_with_stimulus_overlay(mean_trace_per_pair_LB,sem_trace_per_pair_LB, mean_stim_traces_LB, Hz_LB,None,'LB' )
 
 
-# Grab the pulse peak times
-peaks_stim = find_peaks(stim[0], prominence = 0.7)[0]
-t_peaks = peaks_stim/44100
 
-# Truncate the first 2 blocks
-idx_start = np.where(t_peaks>40)[0][0]
-
-# Define the time of the responses. Starts at 1/frame rate and we add the sampling time we computed above for each ROIs
-resp_ts = np.zeros((to_use.shape[0], to_use.shape[1])) 
-for i in range(to_use.shape[0]):
-    resp_ts[i,:] = np.arange(frame_rate,(to_use.shape[1]+frame_rate)*frame_rate, frame_rate) + t_to_use[i]/1000
-       
-# Define the window around each pulse over which to grab the activity
-time_window = 18  # in ms
-
-dist = []  # contains the time difference between the pulse time and response time
-r = []     # contains the fluorescence values around each pulse
-r_shuffle = []
-# Loop through the ROIs
-for roi in range(to_use.shape[0]):
-    for t_peak in t_peaks[idx_start:][::2]:
-        # for each peak, grab all the responses within a given window
-        # first get the index of the response times within the window around the pulse
-        idx_r = np.abs(resp_ts[roi]-t_peak) <= (time_window/1000)
-        # grab the times
-        t_r = resp_ts[roi,idx_r]
-        # loop through these times
-        for t in t_r:
-            #store the time difference with the pulse time 
-            dist.append(t-t_peak)
-            # store the fluorescence value at that time
-            idx = (t == resp_ts[roi])
-            r.append( to_use[roi,idx][0] )
-            r_shuffle.append( to_use_shuffle[roi,idx][0] )
+### For 2p
+mean_trace_per_pair_2p,sem_trace_per_pair_2p = f.compute_mean_time_series_per_block_pair(
+    dffs=zscore(dffs_2p,axis =1),
+    time_activity=time_activity_2p,
+    frame_rate=Hz_2p,
+    start_block_seconds=start_block_seconds_2p[1:],
+    end_block_seconds=end_block_seconds_2p[1:],
+    t_added = 2,
+    scope = '2p'
+)
 
 
-# Convert to arrays
-R = np.array(r) 
-R_shuffle = np.array(r_shuffle) 
-R_ts = np.array(dist) 
+mean_stim_traces_2p = f.extract_single_stimulus_per_block_pair(
+    stimulus=pulse_song,
+    time_audio=time_audio_2p,
+    frame_rate=100,
+    start_block_seconds=start_block_seconds_2p[1:],
+    end_block_seconds=end_block_seconds_2p[1:],
+    t_added = 2
+)
 
 
-# Get the sorted indices of the times array
-sorted_indices = np.argsort(R_ts)
-# Sort both arrays using the sorted indices
-R_ts_sorted = R_ts[sorted_indices]
-R_sorted = R[sorted_indices]
-R_sorted_shuffle = R_shuffle[sorted_indices]
-
-###### Divide into bins and take the mean fluoresence in each bin
-bin_edges = np.arange(-time_window*1000, time_window*1000 + 0.0009*1000, 0.0009*1000)
-# Digitize the times array into bins
-bin_indices = np.digitize(R_ts_sorted*1000, bins=bin_edges)
-
-# Extract fluorescence values for each bin and calculate the mean
-bin_means = []
-bin_std = []
-bin_centers = []
-for i in range(1, len(bin_edges)):  # Iterate over bins
-    # Find indices of elements in the current bin
-    values_in_bin = R_sorted[bin_indices == i]
-    if len(values_in_bin) > 0:  # Avoid empty bins
-        bin_means.append(np.mean(values_in_bin))
-        bin_std.append(sem(values_in_bin))
-        bin_centers.append((bin_edges[i - 1] + bin_edges[i]) / 2)  # Center of the bin
+f.plot_calcium_with_stimulus_overlay(mean_trace_per_pair_2p,sem_trace_per_pair_2p, mean_stim_traces_2p, Hz_2p,None, '2p' )
 
 
-# Convert to arrays
-bin_means = np.array(bin_means)
-bin_std = np.array(bin_std)
-bin_centers = np.array(bin_centers)
 
-# Plot the mean fluorescence values
-plt.figure(figsize=(6, 5))
-plt.plot(bin_centers,bin_means, linestyle='-', color='g', label='Mean Fluorescence')
-plt.fill_between(bin_centers,y1=bin_means+bin_std,y2=bin_means-bin_std,color='g',alpha=0.1)
-plt.xlabel('Time from pulse (ms)',fontsize =24)
-plt.ylabel('Mean Z(DF/F) per 0.9 ms',fontsize =24)
+#%% Plot the fourier of the mean
 
-plt.xticks(fontsize =22)
-plt.yticks(fontsize =22)
-plt.ylim(-0.02,0.06) 
-plt.locator_params(axis='y', nbins=4)
+f.fourier_mean_activity_interpolate(zscore(dffs_LB,axis = 1),start_block_seconds_LB,end_block_seconds_LB,0,Hz_LB,time_activity_LB,'LB', Hz_LB,142, None,14, 'green')
+f.fourier_mean_activity_interpolate(zscore(dffs_2p,axis = 1),start_block_seconds_2p,end_block_seconds_2p,2,Hz_2p,time_activity_2p,'2p', Hz_LB,282, None,1.1, 'magenta')
+
+
+
+#%% Plot fraction of power
+abs_power_LB, frac_power_Lb = f.power_ROI(zscore(dffs_LB,axis = 1),start_block_seconds_LB,end_block_seconds_LB,0,28.2893,time_activity_LB,'LB',282)
+abs_power_2p, frac_power_2p = f.power_ROI(zscore(dffs_2p,axis = 1),start_block_seconds_2p,end_block_seconds_2p,2,2.2,time_activity_2p,'2p',282)
+
+f.plot_power_ROIs(abs_power_LB,frac_power_Lb,abs_power_2p,frac_power_2p,None)
+
+
+#%% Plot single trace for LBM
+
+roi = -2
+limit = 7977
+
+plt.figure(figsize = (20,3))
+plt.plot(time_activity_LB[:limit], zscore(dffs_LB[roi,:limit],axis=0), color = 'k')
+max_trace = np.max(zscore(dffs_LB[roi,:limit],axis=0))
+min_trace = np.min(zscore(dffs_LB[roi,:limit],axis=0))
+plt.fill_between(time_audio_LB,y1=(max_trace*pulse_song)+0.05,y2=(max_trace*pulse_song)+0.3,where =pulse_song>0,color='r',alpha=1)
+plt.xlim(0,time_activity_LB[-1])
+#plt.xticks([60,70,80,90,100,110,120,130,140], [0,10,20,30,40,50,60,70,80], fontsize = 14)
+plt.yticks(fontsize = 14)
+plt.ylabel('Z(DF/F)', fontsize = 24)
+plt.xlabel('Time (s)', fontsize = 24)
+plt.xticks(fontsize = 22, color = 'k')
+plt.yticks(fontsize = 22, color = 'k')
+plt.locator_params(axis='y', nbins=3)
 plt.tight_layout()
 
-######################################
-#### Plot the shuffled PTA
-######################################
 
-## Divide into bins and take the mean fluoresence in each bin
-bin_edges = np.arange(-time_window*1000, time_window*1000 + 0.0009*1000, 0.0009*1000)
-# Digitize the times array into bins
-bin_indices = np.digitize(R_ts_sorted*1000, bins=bin_edges)
 
-# Extract fluorescence values for each bin and calculate the mean
-bin_means = []
-bin_std = []
-bin_centers = []
-for i in range(1, len(bin_edges)):  # Iterate over bins
-    # Find indices of elements in the current bin
-    values_in_bin = R_sorted_shuffle[bin_indices == i]
-    if len(values_in_bin) > 0:  # Avoid empty bins
-        bin_means.append(np.mean(values_in_bin))
-        bin_std.append(sem(values_in_bin))
-        bin_centers.append((bin_edges[i - 1] + bin_edges[i]) / 2)  # Center of the bin
 
-# Convert to arrays
-bin_means = np.array(bin_means)
-bin_std = np.array(bin_std)
-bin_centers = np.array(bin_centers)
 
-# Plot the mean fluorescence values
-plt.figure(figsize=(6, 5))
-plt.plot(bin_centers,bin_means, linestyle='-', color='m', label='Mean Fluorescence') 
-plt.fill_between(bin_centers,y1=bin_means+bin_std,y2=bin_means-bin_std,color='m',alpha=0.1)
-plt.xlabel('Time from pulse (ms)',fontsize =24)
-plt.ylabel('Mean Z(DF/F) per 0.9 ms',fontsize =24)
 
-plt.xticks(fontsize =22)
-plt.yticks(fontsize =22)
-plt.ylim(-0.02,0.06)
-plt.locator_params(axis='y', nbins=4)
-plt.tight_layout()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
