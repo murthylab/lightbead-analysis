@@ -41,7 +41,7 @@ def get_from_tiffs(tiffdir, outdir):
     _extract_volumes_from_tiffs(list_of_tiffs, green_dir, red_dir)
 
 
-def concat_volumes(indir, outpath, xdim=256, ydim=214, zdim=9):
+def concat_volumes(indir, outpath, xdim=256, ydim=128, zdim=49):
     """make a 4D (x,y,z,t) dataset from a directory of 3D (x,y,z) volumes"""
 
     # initialize

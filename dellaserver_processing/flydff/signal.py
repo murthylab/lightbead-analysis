@@ -23,7 +23,7 @@ from typing import Tuple
 # --------*--------*--------*--------
 
 
-def getdff(gcamp_path: str, outdir: str, fname: str, shape: Tuple[int, int, int, int]):
+def getdff(gcamp_path: str, outdir: str, fname: str, shape: Tuple[int, int, int, int], F0window: int, HPF_sigma: int):
     """ get df/f and zscored(df/f) from 4D motion corrected gcamp data
     inputs:
         gcamp_path: path/to/green_moco.mmap
@@ -47,9 +47,9 @@ def getdff(gcamp_path: str, outdir: str, fname: str, shape: Tuple[int, int, int,
         logging.info(f'processing slice # {ii}')
         thisSlice = brain[:, :, ii, :]
 
-        hpf = _high_pass_filter(thisSlice[:, :, None, :])  # needs 4D input
+        hpf = _high_pass_filter(thisSlice[:, :, None, :],hpf_sigma=HPF_sigma)  # needs 4D input
 
-        dff = _dff(hpf)
+        dff = _dff(hpf,F0_win=F0window)
         brain_dff[:, :, ii, :] = dff[:, :, 0, :]
 
         zscored_dff = zscore_4D(dff)
@@ -93,15 +93,15 @@ def smooth_signal(brain):
 # --------*--------*--------*--------
 
 
-def _high_pass_filter(brain):
+def _high_pass_filter(brain, hpf_sigma):
     logging.info('high pass filtering via memmapping')
-    smoothed = gaussian_filter1d(brain, sigma=374, axis=-1, truncate=1)
+    smoothed = gaussian_filter1d(brain, sigma=hpf_sigma, axis=-1, truncate=1)
     logging.info(f'shape of high pass smoothing filter: {smoothed.shape}')
     corrected = brain - smoothed + np.mean(brain, axis=3)[:, :, :, None]
     return corrected
 
 
-def _dff(brain, F0_win=187):
+def _dff(brain, F0_win):
     """calculated df/f based on F0 baseline"""
     # find average signal in first 60 seconds (187 vols)
     F0 = np.mean(brain[:, :, :, :F0_win], axis=3)
