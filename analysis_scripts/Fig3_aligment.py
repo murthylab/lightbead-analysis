@@ -14,7 +14,7 @@ import os
 from scipy.io import loadmat
 import h5py
 import pickle
-import functions as f
+import Functions as f
 from scipy.signal import convolve
 
 matplotlib.rcParams['axes.spines.right'] = False
