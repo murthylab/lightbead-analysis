@@ -123,44 +123,6 @@ for i, dic in enumerate(list_dic):
         
 
         
-#%%  Extract depth
-
-def assign_depths(n_rois: int, slice_depths: np.ndarray) -> np.ndarray:
-    """
-    Assigns depths to each ROI given the total number of ROIs and slice depths.
-
-    Parameters
-    ----------
-    n_rois : int
-        Total number of ROIs (number of rows in your 2D array).
-    slice_depths : np.ndarray
-        1D array of shape (n_slices,) containing the depth for each slice.
-
-    Returns
-    -------
-    roi_depths : np.ndarray
-        1D array of shape (n_rois,) where each entry is the depth of the slice
-        corresponding to that ROI.
-    """
-    n_slices = len(slice_depths)
-    rois_per_slice = n_rois // n_slices  # assumes equal number of ROIs per slice
-    
-    if n_rois % n_slices != 0:
-        raise ValueError("Number of ROIs is not evenly divisible by number of slices.")
-
-    # Repeat each slice depth rois_per_slice times
-    roi_depths = np.repeat(slice_depths, rois_per_slice)
-    
-    return roi_depths
-
-depth_a1 =np.arange(275, 5,-10)
-depth_a2 =np.arange(220,-50,-10)
-depth_a3 =np.arange(275, 5,-10)
-list_depth = [depth_a1,depth_a1,depth_a2,depth_a3,depth_a3,depth_a3]
-
-for i, dic in enumerate(list_depth[:1]):
-    depth_rois = assign_depths(dffs.shape[0], list_depth[i])
-        
 #%% Extract audio correlated ROIs   
      
 # Creat stimulus with same number of time points as activity
@@ -186,139 +148,8 @@ time_activity= np.arange(frame_rate,(dffs_all.shape[1]+frame_rate)*frame_rate,fr
 # Extract the top 0.5% of ROIs with highest correlation coeficient with the stimulus
 audio_correlated, coeffs, all_coeffs,sorted_indices = f.crosscorr_sort(dffs_all[:], continuous_stim, cutoff_corr ,Hz,0.0)
 
-# Plot the mean
-plt.figure(figsize = (15,5))       
-plt.plot(time_activity, np.mean(dffs_all[audio_correlated,:],axis=0))    
-max_trace = np.max(np.mean(dffs_all[audio_correlated,:],axis=0))
-plt.fill_between(time_audio,y1=max_trace*pulse_song,y2=(max_trace*pulse_song)+0.02,where =pulse_song>0,color='r',alpha=0.5)
-plt.fill_between(time_audio,y1=max_trace*sine_song,y2=(max_trace*sine_song)+0.02,where =sine_song>0,color='b',alpha=0.5)
-plt.title('Mean activity {}'.format(dic)) 
-plt.xlabel('Time (s)')
-plt.ylabel('DF/F')
-'''
-## Get the trial at which the ROIs was extracted from
-count_1, count_2,count_3, count_4,count_5, count_6 = 0,0,0,0,0,0
-trial1,trial2,trial3,trial4,trial5,trial6 = [],[],[],[],[],[]
-for roi in sorted_indices:
-    if roi<54000:
-        count_1 += 1
-        trial1.append(roi)
-    if (roi>54000) and (roi<108000):
-        count_2 += 1
-        trial2.append(roi)
-    if (roi>108000) and (roi<162000):
-        count_3 += 1
-        trial3.append(roi)
-    if (roi>162000) and (roi<216000):
-        count_4 += 1
-        trial4.append(roi)
-    if (roi>216000) and (roi<270000):
-        count_5 += 1
-        trial5.append(roi)
-    if roi>270000:
-        count_6 += 1
-        trial6.append(roi)
-        
-27950//2000
-
-## Here we check if any auditory ROIs were in slice 13,14,27
-slice_13, slice_14,slice_27 = [],[],[]
-count_13, count_14,count_27 = 0,0,0
-for roi in sorted_indices:
-    if (roi>24000) and (roi<26000):
-        count_13 += 1
-        slice_13.append(roi)
-    if (roi>26000) and (roi<28000):
-        count_14 += 1
-        slice_14.append(roi)
-    if (roi>52000) and (roi<54000):
-        count_27 += 1
-        slice_27.append(roi)
-        
-        
-## Here we check if any auditory ROIs were in slice 1,2,15, 16      
-slice_1, slice_2,slice_15,slice_16 = [],[],[],[]
-count_1, count_2,count_15,count_16 = 0,0,0,0
-for roi in sorted_indices:
-    if (roi>0) and (roi<2000):
-        count_1 += 1
-        slice_1.append(roi)
-    if (roi>2000) and (roi<4000):
-        count_2 += 1
-        slice_2.append(roi)
-    if (roi>28000) and (roi<30000):
-        count_15 += 1
-        slice_15.append(roi)        
-    if (roi>30000) and (roi<32000):
-        count_16 += 1
-        slice_16.append(roi)        
-
-
-slice_15[10:]
-
-
-slice_13, slice_14,slice_27 = [],[],[]
-count_13, count_14,count_27 = 0,0,0
-for roi in sorted_indices:
-    if (roi>24000) and (roi<26000):
-        count_13 += 1
-        slice_13.append(roi)
-    if (roi>78000) and (roi<80000):
-        count_13 += 1
-        slice_13.append(roi)
-    if (roi>132000) and (roi<134000):
-        count_13 += 1
-        slice_13.append(roi)
-    if (roi>186000) and (roi<188000):
-        count_13 += 1
-        slice_13.append(roi)
-    if (roi>240000) and (roi<242000):
-        count_13 += 1
-        slice_13.append(roi)    
-    if (roi>294000) and (roi<296000):
-        count_13 += 1
-        slice_13.append(roi)  
-        
-    if (roi>26000) and (roi<28000):
-        count_14 += 1
-        slice_14.append(roi)
-    if (roi>80000) and (roi<82000):
-        count_14 += 1
-        slice_14.append(roi)
-    if (roi>134000) and (roi<136000):
-        count_14 += 1
-        slice_14.append(roi)
-    if (roi>188000) and (roi<190000):
-        count_14 += 1
-        slice_14.append(roi)
-    if (roi>242000) and (roi<244000):
-        count_14 += 1
-        slice_14.append(roi)    
-    if (roi>296000) and (roi<298000):
-        count_14 += 1
-        slice_14.append(roi)        
-        
-        
-    if (roi>52000) and (roi<54000):
-        count_27 += 1
-        slice_27.append(roi)
-    if (roi>106000) and (roi<108000):
-        count_27 += 1
-        slice_27.append(roi)
-    if (roi>111000) and (roi<113000):
-        count_27 += 1
-        slice_27.append(roi)
-    if (roi>165000) and (roi<167000):
-        count_27 += 1
-        slice_27.append(roi)
-    if (roi>219000) and (roi<221000):
-        count_27 += 1
-        slice_27.append(roi)    
-    if (roi>273000) and (roi<275000):
-        count_27 += 1
-        slice_27.append(roi) 
-'''
-
+# Get correlation coeffs between ROIs from the Tdtomato channel
+audio_correlated_red, coeffs_red, all_coeffs_red,sorted_indices_red = f.crosscorr_sort(dffs_all_red[:,:], continuous_stim, cutoff_corr ,Hz,0.0)
 
        
 #%% Export audio correlated ROIs
@@ -337,13 +168,6 @@ if export == True:
 #%% Plot distribution of correlation coefficient
 
 ###### Plot for the GCaMP channel ###############
-'''
-# sort the array
-all_coeffs_sorted = np.copy(all_coeffs)
-sorted_indices = np.argsort(all_coeffs_sorted)
-all_coeffs_sorted = all_coeffs_sorted[sorted_indices]
-'''
-
 if scope == 'LB':
     col = 'g.'
 else:
@@ -361,20 +185,8 @@ plt.yticks(fontsize =22)
 plt.tight_layout()
 
 
-path_fig = 'C:/Users/wayan.CHRISTAPNI/Princeton Dropbox/Wayan Gauthey/Princeton/Lightbead/Method paper/Figures/Panels/Figure 2/14012025/'
-plt.savefig(path_fig + 'Corr_coeff_2p.png', transparent = True)  
-
 
 ### Plot for the Tdtomato channel###############
-# Get correlation coeffs between ROIs from the Tdtomato channel
-audio_correlated_red, coeffs_red, all_coeffs_red,sorted_indices_red = f.crosscorr_sort(dffs_all_red[:,:], continuous_stim, cutoff_corr ,Hz,0.0)
-
-'''
-all_coeffs_sorted_red = np.copy(all_coeffs_red)
-sorted_indices_red = np.argsort(all_coeffs_sorted_red)
-all_coeffs_sorted_red = all_coeffs_sorted_red[sorted_indices_red]
-'''
-
 plt.figure()
 plt.plot(np.random.normal(0.5,0.005, size = len(all_coeffs_red)),all_coeffs_red,col,alpha = 0.3)
 plt.axhline(coeffs_red[0], linestyle ='--', color = 'k')
@@ -393,63 +205,7 @@ sorted_indices_coeff = np.argsort(all_coeffs_sorted)
 all_coeffs_sorted = all_coeffs_sorted[sorted_indices_coeff]
 all_depths_sorted = depth_rois_all[sorted_indices_coeff]
 
-#plt.figure(figsize = (10,10))
-#plt.scatter(all_depths_sorted, all_coeffs_sorted)
-
-## Only top 0.5
-depths_top05 = depth_rois_all[sorted_indices]
-depths_top05[np.argsort(depths_top05)]
-
-#### Sorting by individual brain
-depths_top05 = depth_rois_all[trial6]
-depths_top05[np.argsort(depths_top05)]
-
-from collections import defaultdict, deque
-pos_map = defaultdict(deque)
-for i,v in enumerate(sorted_indices):
-    pos_map[v].append(i)
-    
-out = np.empty(len(trial6),dtype = int)
-for i, v in enumerate(trial6):
-    out[i] = pos_map[v].popleft()    
-#######
-
-## filter 04162025 out
-sorted_indices_a = []
-idx_filter_a=[]
-for i,roi in enumerate(sorted_indices):
-    if (roi<108000) or (roi>162000):
-        sorted_indices_a.append(roi)
-        idx_filter_a.append(i)
-len(sorted_indices), len(sorted_indices_a), len(idx_filter_a)
-
-#filter out s13,14
-sorted_indices_s = []
-idx_filter_s=[]
-for i,roi in enumerate(sorted_indices):
-    if (roi<=24000):
-        idx_filter_s.append(i)
-        sorted_indices_s.append(roi)
-    if (roi>=28000) and (roi<=78000):
-        idx_filter_s.append(i)
-        sorted_indices_s.append(roi)        
-    if (roi>=82000) and (roi<=132000):
-        idx_filter_s.append(i)
-        sorted_indices_s.append(roi)
-    if  (roi>=136000) and (roi<=186000):
-        idx_filter_s.append(i)
-        sorted_indices_s.append(roi)
-    if  (roi>=190000) and (roi<=240000):
-        idx_filter_s.append(i)
-        sorted_indices_s.append(roi)        
-    if (roi>=244000) and (roi<=294000):
-        idx_filter_s.append(i)
-        sorted_indices_s.append(roi)        
-    if  (roi>=298000):
-        idx_filter_s.append(i)
-        sorted_indices_s.append(roi) 
         
-#filter out s13,14 and 04162025
 sorted_indices_b = []
 idx_filter_b=[]
 for i,roi in enumerate(sorted_indices):
@@ -475,48 +231,21 @@ for i,roi in enumerate(sorted_indices):
         idx_filter_b.append(i)
         sorted_indices_b.append(roi)         
         
-len(sorted_indices),len(sorted_indices_a), len(idx_filter_a), len(sorted_indices_s), len(idx_filter_s),len(sorted_indices_b), len(idx_filter_b)
 
-depths_top05_a = depth_rois_all[sorted_indices_a]
-depths_top05_s = depth_rois_all[sorted_indices_s]
 depths_top05_b = depth_rois_all[sorted_indices_b]
 
-plt.figure(figsize = (10,10))
-#plt.scatter(depths_top05, coeffs, color = 'g',alpha = 0.2)
-plt.scatter(depths_top05_b, coeffs[idx_filter_b], color = 'g',alpha = 0.2)
-plt.xlabel('Depth (um)', fontsize = 16)
-plt.ylabel('Corr coeff', fontsize = 16)
-plt.yticks(fontsize = 16)
-plt.xticks(fontsize = 16)
-plt.xlim(33.5,286.5)
-plt.ylim(0,0.63)
 
-np.unique(depths_top05)
-depths_top05_b.shape,coeffs[idx_filter_b].shape
-np.min(depths_top05)
 # =============================
 ### Violin plot
 # =============================
-bin_width=30
-#bin_width=np.array([14,13,12,11,12,11,11,11,10,10,11,10,10,10,10,10,10,10,9,8,12])
 bin_width=np.array([10,14,12,12,12,11,11,10,10,11,11,10,10,10,10,10,10,10,8,8,9])
 jitter_sd_frac=0.05
-depths_top05 = depths_top05_b
-d = all_depths_sorted #depths_top05 #all_depths_sorted
-c = all_coeffs_sorted #[idx_filter_b] #all_coeffs_sorted
-c= coeffs
-# Determine depth range, snap to bin edges
-depth_min = np.floor(d.min() / bin_width) * bin_width
-if depth_min<0:
-    depth_min = 0
-depth_max = np.ceil(d.max() / bin_width) * bin_width
+c= coeffs[idx_filter_b]
+d = depths_top05_b
 
 depth_min=54
 depth_max=275
 # Bin edges and centers
-bin_edges = np.arange(depth_min, depth_max + bin_width, bin_width, dtype=float)
-bin_centers = bin_edges[:-1] + bin_width / 2.0
-#Manually define
 bin_edges = np.array([60,74,86,98,110,121,132,143,153,163,174,185,195,205,215,225,235,245,255,263,271,280])
 bin_centers = np.array([67,80,92,104,116,126,137,148,158,168,179,190,200,210,220,230,240,250,259,267,275])
 # Assign each ROI to a bin index
@@ -540,7 +269,7 @@ vmax = np.nanmax(c)
 cmap="Greens"
 norm = colors.Normalize(vmin=depth_min, vmax=depth_max)
 sm = cm.ScalarMappable(norm=norm, cmap=cmap)
-bin_colors = sm.to_rgba(centers_kept)   # RGBA color per kept bin
+bin_colors = sm.to_rgba(centers_kept)   
 
 fig, ax = plt.subplots(figsize=(18, 5))
 parts = ax.violinplot(
@@ -564,10 +293,7 @@ if 'cmeans' in parts:
 rng = np.random.default_rng(0)
 t = 0
 for x0, vals, col in zip(centers_kept, data_per_bin, bin_colors):
-    x = rng.normal(loc=x0, scale=bin_width[t] * jitter_sd_frac, size=vals.size)
-    #ax.scatter(x, vals, s=8, alpha=0.35, color = 'b')
-    #sc = ax.scatter(x, vals, s=10, alpha=0.7, zorder=3,c=vals, cmap=cmap, vmin=vmin, vmax=vmax)
-    #ax.scatter(x, vals, s=10, alpha=0.85, zorder=3, c=[col])        
+    x = rng.normal(loc=x0, scale=bin_width[t] * jitter_sd_frac, size=vals.size)     
     ax.scatter(x, vals,s=12, c=[col], edgecolors=['k'],alpha=0.85, zorder=3,linewidths=0.1)
     t+=1
 
@@ -576,9 +302,7 @@ ax.set_ylabel("Correlation coefficient", fontsize = 16)
 ax.set_xticks(centers_kept)
 ax.set_xticklabels([f"{int(x - bin_width[i]/2)}–{int(x + bin_width[i]/2)}" for i,x in enumerate(centers_kept)], rotation=45, ha="right", fontsize=16)
 ax.set_xticklabels([f"{int(bin_edges[i])}–{int(bin_edges[i+1])}" for i,x in enumerate(centers_kept)], rotation=45, ha="right", fontsize=16)
-
 ax.tick_params(axis='y', labelsize=16)
-#ax.grid(True, axis='y', linestyle=':', alpha=0.5)
 
 ylim = ax.get_ylim()
 y_text = ylim[0] - 0.02 * (ylim[1] - ylim[0])
@@ -588,91 +312,32 @@ ax.set_ylim(y_text,)
 
 fig.tight_layout()
 
-path = 'C:/Users/wayan.CHRISTAPNI/Princeton Dropbox/Wayan Gauthey/Princeton/Lightbead/Method paper/Figures/Panels/Figure 2/14012025/Revision round 1/Depth/Correct values/exluding 04162025/excluding s13 and s14/'
-if save:
-    plt.savefig(path + 'violin_coeffs_depth_noa2_nos13_14.pdf', transparent = True)
-
 
 
 # =============================
 # HM
 # =============================
-
-
 ### Sort ROIs by depth and by coeff if tie
-order = np.lexsort((-coeffs, depths_top05))
 order = np.lexsort((-coeffs[idx_filter_b], depths_top05_b))
 dffs_sorted_depth    = dffs_all[sorted_indices_b,:][order]
-depths_sorted  = depths_top05[order]
-coeffs_sorted  = coeffs[order]
-
-
-all_depths_sorted.shape, coeffs.shape
-
-sorted_indices.shape,depths_top05.shape
-
-sorted_indices_depth_top05 = sorted_indices[np.argsort(depths_top05)]
 
 to_plot_LB = zscore(dffs_sorted_depth[:,:7300],axis = 1)
-to_plot_LB = zscore(dffs_all[sorted_indices_depth_top05,:7300],axis = 1)
-to_plot_LB = np.flip(zscore(dffs_all[trial6],axis = 1),axis = 0)
-to_plot_LB = temp2
 
-
-cmap_base = 'viridis' #gnuplot
-vmin, vmax = -0.4, 1.1  # -0.8, 1
+cmap_base = 'viridis' 
+vmin, vmax = -0.4, 1.1 
 cmap = f.truncate_colormap(cmap_base, vmin, vmax)
 
-plt.figure(figsize = (4.7,5.3)) #(4,5)
+plt.figure(figsize = (4.7,5.3)) 
 im = plt.imshow(to_plot_LB, aspect = 'auto', vmin = -1, vmax = 1,cmap = cmap, extent = [0.035,258,0,1700])   
-#im = plt.imshow(to_plot_LB, aspect = 'auto', cmap = 'viridis', extent = [0.035,258,0,1700])   
 plt.tight_layout()
-#plt.colorbar(im)
+plt.colorbar(im)
 plt.yticks([])
 plt.xticks(fontsize = '16', color = 'w')
 plt.fill_between(time_audio,y1=pulse_song+1725, y2=pulse_song +1745,where =pulse_song>0,color='r',alpha=1)
-#plt.xlabel('Time (s)', fontsize = '16')
-plt.tight_layout()
-
-path = 'C:/Users/wayan.CHRISTAPNI/Princeton Dropbox/Wayan Gauthey/Princeton/Lightbead/Method paper/Figures/Panels/Figure 2/14012025/Revision round 1/Depth/Correct values/exluding 04162025/excluding s13 and s14/'
-if save:
-    plt.savefig(path + 'HM_sorted_both.pdf', transparent = True)
-
-#### For individual brains
-
-depths_top05 = depth_rois_all[trial6]
-
-from collections import defaultdict, deque
-pos_map = defaultdict(deque)
-for i,v in enumerate(sorted_indices):
-    pos_map[v].append(i)
-    
-out = np.empty(len(trial6),dtype = int)
-for i, v in enumerate(trial6):
-    out[i] = pos_map[v].popleft()    
-
-
-order = np.lexsort((-coeffs[out], depths_top05))
-dffs_sorted_depth = dffs_all[trial6,:][order]
-
-
-order.shape,dffs_sorted_depth.shape
-
-to_plot_LB = zscore(dffs_sorted_depth,axis = 1)
-
-cmap_base = 'viridis' #gnuplot
-vmin, vmax = -0.4, 1.1  # -0.8, 1
-cmap = f.truncate_colormap(cmap_base, vmin, vmax)
-
-plt.figure(figsize = (4.7,5.3)) #(4,5)
-im = plt.imshow(to_plot_LB, aspect = 'auto', vmin = -1, vmax = 1,cmap = cmap, extent = [0.035,258,0,400])   
-plt.tight_layout()
-#plt.colorbar(im)
-plt.yticks([])
-plt.xticks(fontsize = '16')
-#plt.fill_between(time_audio_LB,y1=pulse_song+1725, y2=pulse_song +1745,where =pulse_song>0,color='r',alpha=1)
 plt.xlabel('Time (s)', fontsize = '16')
 plt.tight_layout()
+
+
 
 
 ### Here we build a line plot of depth to go along the heatmap
@@ -684,15 +349,12 @@ for i in range(unique_elements.shape[0]):
         temp = np.ones((counts[i]))*unique_elements[i]
     else:
         temp = np.hstack((temp,np.ones((counts[i]))*unique_elements[i]))
-
-
+        
 plt.figure(figsize = (3,8))
 plt.plot(temp,-np.arange(0,1488), color = 'k') 
 plt.yticks([]) 
 plt.ylim(-1488,0)  
 plt.xlim(0,280)  
-plt.xticks(color = 'w')   
+plt.xticks(color = 'k', fontsize = 16)  
+plt.xlabel('Depth', fontsize = 18) 
 
-path = 'C:/Users/wayan.CHRISTAPNI/Princeton Dropbox/Wayan Gauthey/Princeton/Lightbead/Method paper/Figures/Panels/Figure 2/14012025/Revision round 1/Depth/Correct values/exluding 04162025/excluding s13 and s14/'
-if save:
-    plt.savefig(path + 'depth_for_HM.pdf', transparent = True)
