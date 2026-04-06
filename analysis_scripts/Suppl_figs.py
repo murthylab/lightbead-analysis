@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-This scripts comptute plots for Suppl figure S5 and S6
+This scripts comptute plots for Suppl figure S5, S6 and S7
 """
 
 #%% Imports
@@ -172,10 +172,72 @@ for i, dic in enumerate(list_dic[:]):
 
 
 
+#%%
+############################################################
+# Mean activity and Fourier spectrum on the red channel
+############################################################
+
+#TODO CHANGE THIS TO THE DESIRED FOLDER contaning the data with ROIs from the red channel
+path = 'D:/Wayan/LightBead/method paper/clustering/zscored/supervoxels 2000/Red/' 
+data_LB_red = pd.read_pickle(path + 'dffs_audio_LB_corr_top05_all_red'+'.pkl') 
+
+dffs_LB_red = data_LB_red['audio_correlated']
+
+Hz_LB = 28.2893
+fr_LB = 1/Hz_LB 
+time_activity_LB = np.arange(fr_LB,(dffs_LB.shape[1]+fr_LB)*fr_LB,fr_LB) 
 
 
 
+
+### Plot mean activity
+mean_trace_per_pair_LB,sem_trace_per_pair_LB = f.compute_mean_time_series_per_block_pair(
+    dffs=zscore(dffs_LB_red,axis =1),
+    time_activity=time_activity_LB,
+    frame_rate=Hz_LB,
+    start_block_seconds=start_block_seconds_LB[1:],
+    end_block_seconds=end_block_seconds_LB[1:],
+    t_added = 2,
+    scope = 'LB'
+)
+
+
+mean_stim_traces_LB = f.extract_single_stimulus_per_block_pair(
+    stimulus=pulse_song,
+    time_audio=time_audio_LB,
+    frame_rate=100,
+    start_block_seconds=start_block_seconds_LB[1:],
+    end_block_seconds=end_block_seconds_LB[1:],
+    t_added = 2
+)
+
+
+f.plot_calcium_with_stimulus_overlay(mean_trace_per_pair_LB,sem_trace_per_pair_LB, mean_stim_traces_LB, Hz_LB,None,'LB' )
+
    
    
+### Plot the fourier of the mean
+
+f.fourier_mean_activity_interpolate(zscore(dffs_LB_red,axis = 1),start_block_seconds_LB,end_block_seconds_LB,0,Hz_LB,time_activity_LB,'LB', Hz_LB,142, None,14, 'green')   
    
-   
+
+### Plot single trace in the red channel 
+
+roi = -2
+limit = 7977
+
+plt.figure(figsize = (20,3))
+plt.plot(time_activity_LB[:limit], zscore(dffs_LB_red[roi,:limit],axis=0), color = 'k')
+max_trace = np.max(zscore(dffs_LB_red[roi,:limit],axis=0))
+min_trace = np.min(zscore(dffs_LB_red[roi,:limit],axis=0))
+plt.fill_between(time_audio_LB,y1=(max_trace*pulse_song)+0.05,y2=(max_trace*pulse_song)+0.3,where =pulse_song>0,color='r',alpha=1)
+plt.xlim(0,time_activity_LB[-1])
+#plt.xticks([60,70,80,90,100,110,120,130,140], [0,10,20,30,40,50,60,70,80], fontsize = 14)
+plt.yticks(fontsize = 14)
+plt.ylabel('Z(DF/F)', fontsize = 24)
+plt.xlabel('Time (s)', fontsize = 24)
+plt.xticks(fontsize = 22, color = 'k')
+plt.yticks(fontsize = 22, color = 'k')
+plt.locator_params(axis='y', nbins=3)
+plt.tight_layout()
+

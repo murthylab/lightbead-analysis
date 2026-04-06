@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 This script extracts the stimulus correlated ROIs and store them in pkl files for later analyses in Figure 3
-It plots panel B of Fig3, and the associated supplemental figure S7 and S8
+It plots panel B of Fig3, and the associated supplemental figure S7b and S8
 """
 
 #%% Imports
@@ -186,7 +186,7 @@ plt.tight_layout()
 
 
 
-### Plot for the Tdtomato channel###############
+### Plot for the Tdtomato channel in S7B ###############
 plt.figure()
 plt.plot(np.random.normal(0.5,0.005, size = len(all_coeffs_red)),all_coeffs_red,col,alpha = 0.3)
 plt.axhline(coeffs_red[0], linestyle ='--', color = 'k')

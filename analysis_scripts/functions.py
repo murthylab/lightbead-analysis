@@ -541,6 +541,10 @@ def fourier_mean_activity_interpolate(dffs,start_block_seconds,end_block_seconds
       
     plt.tight_layout()
     
+     
+    
+    
+    
            
 
 
